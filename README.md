@@ -7,6 +7,8 @@ This repository publishes a reusable Codex skill that can:
 - validate a local `sub-memory` checkout
 - bootstrap the local Python environment
 - confirm the install state
+- write project-scoped Codex MCP registration
+- update `AGENTS.md` with `sub_memory` usage rules
 - generate ready-to-paste MCP config snippets for:
   - Codex
   - Gemini CLI
@@ -20,12 +22,15 @@ Use this skill when you already have a local checkout of the main `sub-memory` p
 
 - local installation
 - local `stdio` MCP server verification
+- project-scoped Codex onboarding
 - CLI integration snippet generation
 
 Current scope:
 
 - local install
 - local stdio MCP
+- project-local `.codex/config.toml`
+- `AGENTS.md` rule update
 - CLI setup guidance
 
 Not in scope:
@@ -44,6 +49,7 @@ Not in scope:
     ├── SKILL.md
     └── scripts/
         ├── bootstrap_local.sh
+        ├── configure_codex_project.py
         └── render_cli_snippets.py
 ```
 
@@ -77,7 +83,7 @@ If you use a custom Codex home, install to `$CODEX_HOME/skills` instead of `~/.c
 The skill orchestrates three steps:
 
 1. Validate that the target repository is really the `sub-memory` project.
-2. Run a local bootstrap flow.
+2. Run a local bootstrap flow and finish project-local Codex onboarding.
 3. Render machine-specific MCP setup snippets.
 
 ### Bootstrap Script
@@ -94,6 +100,21 @@ It will:
 - install `requirements.txt`
 - install the project in editable mode
 - create `.env` from `.env.example` when missing
+- write `.codex/config.toml` for project-scoped `sub_memory` MCP registration
+- update `AGENTS.md` with `sub_memory` usage rules
+
+### Project Codex Registration
+
+```bash
+python3 ./sub-memory-bootstrap/scripts/configure_codex_project.py \
+  --project-dir /absolute/path/to/sub-memory
+```
+
+It will:
+
+- create or update `/absolute/path/to/sub-memory/.codex/config.toml`
+- create or update `/absolute/path/to/sub-memory/AGENTS.md`
+- preserve unrelated existing content in both files
 
 ### Config Snippet Renderer
 
@@ -107,7 +128,7 @@ It prints absolute-path snippets for:
 - Codex
 - Gemini CLI
 - Claude Code
-- Codex skill installation
+- project-scoped Codex registration
 
 ## Example Prompts
 
@@ -138,7 +159,7 @@ sub-memory-bootstrap으로 기존 설치 상태를 점검하고, 이 저장소�
 ```
 
 ```text
-sub-memory-bootstrap으로 로컬 stdio MCP 서버가 바로 쓸 수 있는 상태인지 확인하고, 다른 개발자에게 전달할 짧은 온보딩 메모도 작성해줘.
+sub-memory-bootstrap으로 로컬 stdio MCP 서버가 바로 쓸 수 있는 상태인지 확인하고, project-local Codex 설정과 AGENTS.md까지 준비해줘.
 ```
 
 ## Expected Target Project
