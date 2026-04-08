@@ -16,6 +16,7 @@ Use this skill for end-to-end local onboarding of the `sub-memory` repository.
 3. The bootstrap flow must also finish project-local Codex onboarding:
    write `.codex/config.toml` for `sub_memory` MCP registration and update `AGENTS.md`
    with `sub_memory` usage rules.
+   Seed a new repository `AGENTS.md` from the bundled default template when needed.
 4. Generate machine-specific config snippets with:
    `scripts/render_cli_snippets.py --project-dir <repo-root>`
 5. Validate the install with:

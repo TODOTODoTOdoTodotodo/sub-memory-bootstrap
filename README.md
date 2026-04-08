@@ -51,6 +51,8 @@ Not in scope:
         ├── bootstrap_local.sh
         ├── configure_codex_project.py
         └── render_cli_snippets.py
+    └── templates/
+        └── AGENTS.default.md
 ```
 
 ## Install The Skill In Codex
@@ -101,6 +103,7 @@ It will:
 - install the project in editable mode
 - create `.env` from `.env.example` when missing
 - write `.codex/config.toml` for project-scoped `sub_memory` MCP registration
+- seed a new `AGENTS.md` from the bundled default template when needed
 - update `AGENTS.md` with `sub_memory` usage rules
   - recall before answering
   - store after each substantive turn

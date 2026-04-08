@@ -10,15 +10,8 @@ CONFIG_BEGIN = "# BEGIN SUB-MEMORY MCP"
 CONFIG_END = "# END SUB-MEMORY MCP"
 AGENTS_BEGIN = "<!-- BEGIN SUB-MEMORY MCP RULES -->"
 AGENTS_END = "<!-- END SUB-MEMORY MCP RULES -->"
-
-DEFAULT_AGENTS_HEADER = """# Repository Instructions
-
-## Safety
-
-- Stay inside this repository unless the task requires another workspace path.
-- Ask before destructive commands or OS-level changes.
-- Do not modify macOS system settings, security settings, or global machine preferences.
-"""
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_AGENTS_TEMPLATE = SCRIPT_DIR.parent / "templates" / "AGENTS.default.md"
 
 
 def resolve_project_dir(project_dir: Path) -> Path:
@@ -75,6 +68,14 @@ def build_agents_block() -> str:
         "after running `sub-memory-bootstrap`.\n"
         f"{AGENTS_END}\n"
     )
+
+
+def load_default_agents_header() -> str:
+    if not DEFAULT_AGENTS_TEMPLATE.exists():
+        raise RuntimeError(
+            f"Missing default AGENTS template: {DEFAULT_AGENTS_TEMPLATE}"
+        )
+    return DEFAULT_AGENTS_TEMPLATE.read_text(encoding="utf-8").rstrip()
 
 
 def _replace_or_append_block(
@@ -139,7 +140,7 @@ def upsert_agents_md(project_dir: Path) -> Path:
     block = build_agents_block()
 
     if not existing.strip():
-        updated = DEFAULT_AGENTS_HEADER.rstrip() + "\n\n" + block.rstrip() + "\n"
+        updated = load_default_agents_header() + "\n\n" + block.rstrip() + "\n"
     else:
         updated = _replace_or_append_block(
             existing,
