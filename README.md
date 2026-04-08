@@ -13,6 +13,7 @@ This repository publishes a reusable Codex skill that can:
   - Codex
   - Gemini CLI
   - Claude Code
+- keep long multi-turn sessions compact by pairing a short working summary with `sub_memory` recall
 
 The actual skill lives in the [`sub-memory-bootstrap/`](./sub-memory-bootstrap) folder.
 
@@ -108,6 +109,7 @@ It will:
   - recall before answering
   - store after each substantive turn
   - reinforce after the answer when recall materially helped
+  - compact long multi-turn sessions into a short working summary
 
 ### Project Codex Registration
 
