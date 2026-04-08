@@ -102,6 +102,9 @@ It will:
 - create `.env` from `.env.example` when missing
 - write `.codex/config.toml` for project-scoped `sub_memory` MCP registration
 - update `AGENTS.md` with `sub_memory` usage rules
+  - recall before answering
+  - store after each substantive turn
+  - reinforce after the answer when recall materially helped
 
 ### Project Codex Registration
 

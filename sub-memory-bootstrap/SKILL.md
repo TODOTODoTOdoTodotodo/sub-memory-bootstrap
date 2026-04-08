@@ -24,7 +24,10 @@ Use this skill for end-to-end local onboarding of the `sub-memory` repository.
    `python -m unittest discover -s tests`
 6. Use project-scoped Codex configuration by default.
    Do not edit `~/.codex/config.toml`, `~/.gemini/settings.json`, `.mcp.json`, or other user-global config files without explicit permission.
-7. If the user is working in Korean, keep the explanation in Korean.
+7. For Codex sessions, the generated `AGENTS.md` rules should mirror the `local_agent`
+   post-processing flow: recall before answering, store after each substantive turn,
+   and reinforce after the answer when recall materially helped.
+8. If the user is working in Korean, keep the explanation in Korean.
    Preserve commands, paths, config keys, and tool names exactly as written.
 
 ## What To Produce
