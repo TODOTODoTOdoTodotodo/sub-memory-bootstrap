@@ -125,6 +125,22 @@ Use sub-memory-bootstrap to validate the local setup and tell me the exact sub-m
 Use sub-memory-bootstrap to inspect this repo, verify the local install path, and draft a short onboarding note for another engineer.
 ```
 
+## 한국어 사용자용 예시
+
+한글로 요청해도 같은 workflow로 동작합니다. 설명은 한국어로 유지하고, 명령어와 설정 키는 그대로 두는 방식이 가장 안정적입니다.
+
+```text
+sub-memory-bootstrap을 사용해서 이 저장소를 로컬에 설치하고 Codex, Gemini CLI, Claude Code용 MCP 설정 스니펫을 현재 머신 경로 기준으로 작성해줘.
+```
+
+```text
+sub-memory-bootstrap으로 기존 설치 상태를 점검하고, 이 저장소에서 실제로 실행되는 sub-memory-mcp 경로를 알려줘.
+```
+
+```text
+sub-memory-bootstrap으로 로컬 stdio MCP 서버가 바로 쓸 수 있는 상태인지 확인하고, 다른 개발자에게 전달할 짧은 온보딩 메모도 작성해줘.
+```
+
 ## Expected Target Project
 
 This skill is designed for the main `sub-memory` repository, where the target project contains:
@@ -139,4 +155,3 @@ The skill does not bundle the `sub-memory` application itself. It only provides 
 ## License
 
 MIT. See [LICENSE](./LICENSE).
-
