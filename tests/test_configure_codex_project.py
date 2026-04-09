@@ -49,6 +49,7 @@ class ConfigureCodexProjectTests(unittest.TestCase):
 
         self.assertIn("[mcp_servers.sub_memory]", config_text)
         self.assertIn(str(self.project_dir / ".venv" / "bin" / "sub-memory-mcp"), config_text)
+        self.assertIn("startup_timeout_sec = 90", config_text)
         self.assertIn("## sub_memory MCP", agents_text)
         self.assertIn("get_memory_status", agents_text)
         self.assertIn("compact the active thread", agents_text)

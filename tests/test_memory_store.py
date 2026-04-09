@@ -31,6 +31,12 @@ class FakeEmbedder:
         return self._vectors[text]
 
 
+class LazyDimensionEmbedder(FakeEmbedder):
+    @property
+    def dimension(self) -> int:
+        raise AssertionError("startup should not require embedder.dimension")
+
+
 @unittest.skipUnless(SQLITE_VEC_AVAILABLE, "sqlite-vec is required for this test")
 class MemoryStoreTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -79,3 +85,10 @@ class MemoryStoreTests(unittest.TestCase):
         updated_weight = self.store.get_edge_weight(first["node_id"], second["node_id"])
         assert updated_weight is not None
         self.assertAlmostEqual(updated_weight, prior_weight + 0.1, places=6)
+
+    def test_startup_does_not_force_embedder_dimension(self) -> None:
+        store = MemoryStore(self.settings, LazyDimensionEmbedder())
+        try:
+            self.assertEqual(store.count_nodes(), 0)
+        finally:
+            store.close()

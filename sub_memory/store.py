@@ -95,6 +95,7 @@ class MemoryStore:
         timestamp = datetime.now(timezone.utc).isoformat()
 
         with self._lock:
+            self._ensure_embedding_dimension_locked(len(embedding))
             self._conn.execute(
                 """
                 INSERT INTO nodes (id, text, embedding, timestamp)
@@ -132,6 +133,8 @@ class MemoryStore:
             return {"query": query, "node_ids": [], "memories": []}
 
         query_embedding = self._embedder.embed_text(query)
+        with self._lock:
+            self._ensure_embedding_dimension_locked(len(query_embedding))
         seed_matches = self.search_similar(query_embedding, limit=1)
         if not seed_matches:
             return {"query": query, "node_ids": [], "memories": []}
@@ -253,28 +256,24 @@ class MemoryStore:
 
     def _sync_embedding_metadata(self) -> None:
         model_name = self._settings.embedding_model_name
-        dimension = str(self._embedder.dimension)
 
         with self._lock:
             stored_model_name = self._get_metadata_locked("embedding_model_name")
             stored_dimension = self._get_metadata_locked("embedding_dimension")
             is_empty = self.count_nodes() == 0
 
-            if stored_model_name is None and stored_dimension is None:
+            if stored_model_name is None and is_empty:
                 self._set_metadata_locked("embedding_model_name", model_name)
-                self._set_metadata_locked("embedding_dimension", dimension)
+                self._set_metadata_locked("embedding_dimension", stored_dimension or "")
                 self._conn.commit()
                 return
 
-            if (
-                stored_model_name == model_name
-                and stored_dimension == dimension
-            ):
+            if stored_model_name == model_name:
                 return
 
             if is_empty:
                 self._set_metadata_locked("embedding_model_name", model_name)
-                self._set_metadata_locked("embedding_dimension", dimension)
+                self._set_metadata_locked("embedding_dimension", stored_dimension or "")
                 self._conn.commit()
                 return
 
@@ -282,6 +281,30 @@ class MemoryStore:
             "The existing memory database was created with a different embedding "
             f"model ({stored_model_name}/{stored_dimension}). Start with a fresh "
             "memory.db or reuse the same model."
+        )
+
+    def _ensure_embedding_dimension_locked(self, dimension: int) -> None:
+        dimension_text = str(dimension)
+        stored_dimension = self._get_metadata_locked("embedding_dimension")
+        is_empty = self.count_nodes() == 0
+
+        if stored_dimension in {None, ""}:
+            self._set_metadata_locked("embedding_dimension", dimension_text)
+            self._conn.commit()
+            return
+
+        if stored_dimension == dimension_text:
+            return
+
+        if is_empty:
+            self._set_metadata_locked("embedding_dimension", dimension_text)
+            self._conn.commit()
+            return
+
+        raise RuntimeError(
+            "The existing memory database was created with a different embedding "
+            f"dimension ({stored_dimension}). Start with a fresh memory.db or "
+            "reuse the same embedding model."
         )
 
     def _load_graph(self) -> None:
@@ -477,4 +500,3 @@ class MemoryStore:
             """,
             (key, value),
         )
-

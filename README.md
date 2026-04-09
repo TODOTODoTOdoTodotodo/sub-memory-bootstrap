@@ -150,7 +150,7 @@ command = "/absolute/path/to/repo/.venv/bin/sub-memory-mcp"
 args = ["--base-dir", "/absolute/path/to/repo"]
 cwd = "/absolute/path/to/repo"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
-startup_timeout_sec = 30
+startup_timeout_sec = 90
 tool_timeout_sec = 120
 ```
 

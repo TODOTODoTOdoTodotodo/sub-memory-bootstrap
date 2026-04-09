@@ -41,7 +41,7 @@ def build_codex_block(project_dir: Path) -> str:
         f'cwd = "{project_dir}"\n'
         'enabled_tools = ["recall_associated_memory", "store_memory", '
         '"reinforce_memory", "get_memory_status"]\n'
-        "startup_timeout_sec = 30\n"
+        "startup_timeout_sec = 90\n"
         "tool_timeout_sec = 120\n"
         f"{CONFIG_END}\n"
     )
