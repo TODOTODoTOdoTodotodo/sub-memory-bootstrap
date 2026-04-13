@@ -15,18 +15,21 @@ git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
 cd sub-memory-bootstrap
 ```
 
-### 0-2. Codex skill 설치
+### 0-2. skill-installer로 Codex skill 설치
 
-```bash
-mkdir -p ~/.codex/skills
-ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
+Codex 안에서 `skill-installer`를 사용해 GitHub 저장소 경로로 `sub-memory-bootstrap` skill을 설치합니다.
+
+예시:
+
+```text
+skill-installer를 사용해서 https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap/tree/main/sub-memory-bootstrap 경로의 skill을 설치해줘.
 ```
 
-`CODEX_HOME`를 따로 쓰는 환경이라면 `~/.codex/skills` 대신 `$CODEX_HOME/skills` 아래에 두면 됩니다.
+설치가 끝나면 Codex를 재시작합니다. 새 skill은 재시작 후 인식되는 것이 기준입니다.
 
 ### 0-3. Codex 새 세션 시작 후 설치 요청
 
-Codex를 다시 시작하거나, 이 저장소 루트에서 새 세션을 엽니다. 그 다음 아래처럼 요청합니다.
+Codex를 다시 시작한 뒤, 이 저장소 루트에서 새 세션을 엽니다. 그 다음 아래처럼 요청합니다.
 
 ```text
 sub-memory-bootstrap으로 이 저장소를 설치하고 project-local Codex MCP 설정, AGENTS.md 규칙, 설치 검증까지 완료해줘.
