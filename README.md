@@ -153,6 +153,23 @@ sub-memory-mcp --base-dir <repo-root>
 - `AGENTS.md`의 `sub_memory` 사용 규칙
 - CLI 연동용 설정 스니펫
 
+중요:
+
+- `.codex/config.toml`은 사용자 전역 설정이 아니라 저장소별 project-local 설정입니다.
+- 즉, `sub-memory-bootstrap`을 실행한 각 저장소마다 해당 저장소의 `.codex/config.toml`이 생성됩니다.
+- 새 Codex 세션은 해당 저장소 루트에서 시작해야 이 설정이 자동으로 적용됩니다.
+
+권장 `.gitignore`:
+
+```gitignore
+.codex/
+.env
+.venv/
+memory.db
+```
+
+현재 bootstrap이 만드는 `.codex` 하위 파일은 기본적으로 `.codex/config.toml`입니다.
+
 ## Codex 예시
 
 ```toml
@@ -205,6 +222,23 @@ claude mcp add --transport stdio sub-memory -- \
 mkdir -p ~/.codex/skills
 ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
 ```
+
+`sub-memory-bootstrap`이 `AGENTS.md`에 추가하는 managed block의 핵심 규칙:
+
+- `get_memory_status`
+  - prior memory가 중요할 수 있는 작업 전에 확인
+- `recall_associated_memory`
+  - 설계 결정, 통합 이력, TODO 문맥이 필요할 때 답변 전에 호출
+- `store_memory`
+  - 각 non-empty user turn 뒤에 최신 요청과 최종 답변을 저장
+- `reinforce_memory`
+  - recall된 기억이 실제 답변에 영향을 줬을 때 강화
+- compact
+  - 멀티턴이 길어지면 짧은 working summary와 recall 조합으로 계속 진행
+- 세션 안내
+  - `sub_memory` tools가 없으면 `.codex/config.toml`이 project-local이라는 점과 새 세션 필요성을 설명
+
+이 block은 `<!-- BEGIN SUB-MEMORY MCP RULES -->` 와 `<!-- END SUB-MEMORY MCP RULES -->` 사이에서 관리됩니다.
 
 ## 테스트
 
