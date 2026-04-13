@@ -8,14 +8,7 @@
 
 터미널형 에이전트 안에서 가장 짧게 시작하려면 아래 순서로 진행합니다.
 
-### 0-1. 저장소 clone
-
-```bash
-git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
-cd sub-memory-bootstrap
-```
-
-### 0-2. skill-installer로 Codex skill 설치
+### 0-1. skill-installer로 Codex skill 설치
 
 Codex 안에서 `skill-installer`를 사용해 GitHub 저장소 경로로 `sub-memory-bootstrap` skill을 설치합니다.
 
@@ -27,12 +20,12 @@ skill-installer를 사용해서 https://github.com/TODOTODoTOdoTodotodo/sub-memo
 
 설치가 끝나면 Codex를 재시작합니다. 새 skill은 재시작 후 인식되는 것이 기준입니다.
 
-### 0-3. Codex 새 세션 시작 후 설치 요청
+### 0-2. Codex 새 세션 시작 후 설치 요청
 
-Codex를 다시 시작한 뒤, 이 저장소 루트에서 새 세션을 엽니다. 그 다음 아래처럼 요청합니다.
+Codex를 다시 시작한 뒤, `sub-memory`를 붙일 현재 저장소 루트에서 새 세션을 엽니다. 그 다음 아래처럼 요청합니다.
 
 ```text
-sub-memory-bootstrap으로 이 저장소를 설치하고 project-local Codex MCP 설정, AGENTS.md 규칙, 설치 검증까지 완료해줘.
+sub-memory-bootstrap으로 현재 저장소를 설치하고 project-local Codex MCP 설정, AGENTS.md 규칙, 설치 검증까지 완료해줘.
 ```
 
 이 단계가 끝나면 아래가 준비됩니다.
@@ -42,7 +35,14 @@ sub-memory-bootstrap으로 이 저장소를 설치하고 project-local Codex MCP
 - `.codex/config.toml`
 - `AGENTS.md`
 
-### 0-4. MCP 연결 확인
+필요하면 이 시점에 저장소가 아직 없다면 아래처럼 받은 뒤 진행합니다.
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+```
+
+### 0-3. MCP 연결 확인
 
 새 Codex 세션에서 `mcp status`를 확인했을 때 `sub_memory`가 보여야 합니다.
 
@@ -59,7 +59,7 @@ sub_memory
 sub_memory MCP 연결 상태를 확인하고 get_memory_status를 호출해서 현재 db_path와 node_count를 보여줘.
 ```
 
-### 0-5. 최초 기억 확인
+### 0-4. 최초 기억 확인
 
 처음에는 `node_count = 0`일 수 있습니다. 그 상태에서 첫 기억을 하나 저장하고 바로 다시 조회해 보면 됩니다.
 
