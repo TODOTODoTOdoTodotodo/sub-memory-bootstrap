@@ -15,7 +15,7 @@ from sub_memory.service import MemoryService
 MCP_INSTRUCTIONS = """Local memory tools backed by SQLite, sqlite-vec, networkx, and local embeddings.
 
 Use recall_associated_memory to fetch relevant prior memory before answering.
-After each substantive turn, call store_memory with the latest user request and your final answer unless the current host runtime already stores turns automatically.
+After each non-empty user turn, call store_memory with the latest user request and your final answer unless the current host runtime already stores turns automatically.
 Use reinforce_memory after the answer when recalled memory materially influenced the answer.
 If a multi-turn session grows long, compact the active thread into a short working summary and rely on that summary plus recalled memory instead of the full raw transcript.
 """
