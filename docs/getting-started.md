@@ -4,6 +4,76 @@
 
 범위는 로컬 설치와 CLI 연동까지입니다. 앱 연동(`ChatGPT 앱`, `Gemini 앱`, `Claude 앱`)은 현재 TODO로 남겨둡니다.
 
+## 0. Codex에서 바로 시작
+
+터미널형 에이전트 안에서 가장 짧게 시작하려면 아래 순서로 진행합니다.
+
+### 0-1. 저장소 clone
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+```
+
+### 0-2. Codex skill 설치
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
+```
+
+`CODEX_HOME`를 따로 쓰는 환경이라면 `~/.codex/skills` 대신 `$CODEX_HOME/skills` 아래에 두면 됩니다.
+
+### 0-3. Codex 새 세션 시작 후 설치 요청
+
+Codex를 다시 시작하거나, 이 저장소 루트에서 새 세션을 엽니다. 그 다음 아래처럼 요청합니다.
+
+```text
+sub-memory-bootstrap으로 이 저장소를 설치하고 project-local Codex MCP 설정, AGENTS.md 규칙, 설치 검증까지 완료해줘.
+```
+
+이 단계가 끝나면 아래가 준비됩니다.
+
+- `.venv`
+- `.env`
+- `.codex/config.toml`
+- `AGENTS.md`
+
+### 0-4. MCP 연결 확인
+
+새 Codex 세션에서 `mcp status`를 확인했을 때 `sub_memory`가 보여야 합니다.
+
+기대 상태 예시:
+
+```text
+sub_memory
+  Tools: get_memory_status, recall_associated_memory, reinforce_memory, store_memory
+```
+
+연결 확인용 자연어 예시:
+
+```text
+sub_memory MCP 연결 상태를 확인하고 get_memory_status를 호출해서 현재 db_path와 node_count를 보여줘.
+```
+
+### 0-5. 최초 기억 확인
+
+처음에는 `node_count = 0`일 수 있습니다. 그 상태에서 첫 기억을 하나 저장하고 바로 다시 조회해 보면 됩니다.
+
+예시:
+
+```text
+이 내용을 기억으로 저장해. "이 저장소의 기본 목적은 Codex에서 sub_memory MCP로 세션 간 기억을 이어가는 것이다."
+```
+
+그 다음:
+
+```text
+방금 저장한 기억을 recall_associated_memory로 다시 찾아줘.
+```
+
+이 흐름이 되면 설치, 재시작, MCP 연결, 최초 기억 확인까지 끝난 상태입니다.
+
 ## 1. 준비 사항
 
 - Python `3.10+`
