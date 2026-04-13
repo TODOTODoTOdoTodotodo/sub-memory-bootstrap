@@ -1,6 +1,6 @@
 # Getting Started
 
-이 문서는 `sub-memory`를 로컬에 설치하고, `Codex`, `Gemini CLI`, `Claude Code`에 로컬 `stdio` MCP 서버로 연결하는 가장 짧은 시작 경로를 정리합니다.
+이 문서는 GitHub 저장소 `sub-memory-bootstrap`을 clone한 뒤, `Codex`, `Gemini CLI`, `Claude Code`에 로컬 `stdio` MCP 서버로 연결하는 가장 짧은 시작 경로를 정리합니다.
 
 범위는 로컬 설치와 CLI 연동까지입니다. 앱 연동(`ChatGPT 앱`, `Gemini 앱`, `Claude 앱`)은 현재 TODO로 남겨둡니다.
 
@@ -15,7 +15,14 @@
 
 ## 2. 로컬 설치
 
-프로젝트 루트에서 실행합니다.
+먼저 GitHub 저장소를 clone 합니다.
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+```
+
+그 다음 저장소 루트에서 실행합니다.
 
 ```bash
 python3.11 -m venv .venv
@@ -43,7 +50,7 @@ COMPACT_SUMMARY_CHAR_LIMIT=2400
 compact 관련 기본값 의미:
 
 - `COMPACT_AFTER_TURNS`
-  - 이 횟수만큼 substantive turn이 쌓이면 오래된 세션 내용을 compact 후보로 봅니다.
+  - 이 횟수만큼 non-empty user turn이 쌓이면 오래된 세션 내용을 compact 후보로 봅니다.
 - `COMPACT_KEEP_RECENT_TURNS`
   - compact 후에도 원문에 가깝게 남겨둘 최근 턴 수입니다.
 - `COMPACT_SUMMARY_CHAR_LIMIT`
@@ -67,7 +74,7 @@ python -m unittest discover -s tests
 CLI 에이전트 연동은 `stdio` transport를 권장합니다.
 
 ```bash
-sub-memory-mcp --base-dir /absolute/path/to/sub-memory
+sub-memory-mcp --base-dir <repo-root>
 ```
 
 MCP 서버가 제공하는 tool:
@@ -85,15 +92,15 @@ MCP 서버가 제공하는 tool:
 
 ### Codex
 
-`~/.codex/config.toml`
+예시는 `<repo-root>` 자리만 각자의 clone 경로로 바꿔 넣으면 됩니다.
 
 ```toml
 [mcp_servers.sub_memory]
-command = "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp"
-args = ["--base-dir", "/absolute/path/to/sub-memory"]
-cwd = "/absolute/path/to/sub-memory"
+command = "<repo-root>/.venv/bin/sub-memory-mcp"
+args = ["--base-dir", "<repo-root>"]
+cwd = "<repo-root>"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
-startup_timeout_sec = 30
+startup_timeout_sec = 90
 tool_timeout_sec = 120
 ```
 
@@ -110,9 +117,9 @@ tool_timeout_sec = 120
 {
   "mcpServers": {
     "sub_memory": {
-      "command": "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp",
-      "args": ["--base-dir", "/absolute/path/to/sub-memory"],
-      "cwd": "/absolute/path/to/sub-memory",
+      "command": "<repo-root>/.venv/bin/sub-memory-mcp",
+      "args": ["--base-dir", "<repo-root>"],
+      "cwd": "<repo-root>",
       "timeout": 30000
     }
   }
@@ -123,8 +130,8 @@ tool_timeout_sec = 120
 
 ```bash
 claude mcp add --transport stdio sub-memory -- \
-  /absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp \
-  --base-dir /absolute/path/to/sub-memory
+  <repo-root>/.venv/bin/sub-memory-mcp \
+  --base-dir <repo-root>
 ```
 
 ## 6. 한 번에 처리하는 Codex Skill 제공 방식
@@ -136,7 +143,7 @@ Codex용 배포 저장소를 별도로 제공합니다.
 
 ### Skill 설치
 
-배포 저장소를 clone한 뒤, 전역 Codex skill 디렉터리로 복사하거나 심볼릭 링크를 겁니다.
+배포 저장소를 clone한 뒤, 전역 Codex skill 디렉터리로 복사하거나 심볼릭 링크를 겁니다. 이 저장소에는 앱 본체와 skill이 같이 들어 있으므로 별도 본체 저장소를 추가로 받을 필요는 없습니다.
 
 ```bash
 git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
@@ -199,7 +206,29 @@ Skill 실행이 끝나면 아래 두 파일이 준비됩니다.
 
 따라서 `sub-memory-bootstrap`으로 온보딩한 뒤에는 저장소 루트에서 새 Codex 세션을 시작하는 것이 가장 안정적입니다.
 
-## 7. 다음 문서
+## 7. 동일 설치를 맞추는 방법
+
+다른 사람의 에이전트에서도 최대한 같은 설치 상태를 맞추려면 아래 기준을 공유합니다.
+
+1. 같은 Git commit 또는 tag를 사용합니다.
+2. 같은 Python 버전(`python3.11`)을 사용합니다.
+3. bootstrap 스크립트를 기준 설치 경로로 사용합니다.
+4. `.env`의 핵심 설정값을 맞춥니다.
+5. 테스트 명령으로 설치 확인을 끝냅니다.
+
+예:
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+git checkout <commit-or-tag>
+./sub-memory-bootstrap/scripts/bootstrap_local.sh .
+python -m unittest discover -s tests
+```
+
+중요한 점은 “같은 로컬 경로”가 아니라 “같은 저장소 버전 + 같은 설정”입니다.
+
+## 8. 다음 문서
 
 - [사용 예제](./usage-examples.md)
 - 상위 요약: [README.md](../README.md)

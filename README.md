@@ -12,6 +12,10 @@
 
 즉, 이 저장소 하나만 clone하면 로컬 설치와 Codex MCP 온보딩까지 모두 처리할 수 있습니다.
 
+GitHub 저장소:
+
+- `https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap`
+
 ## 문서
 
 - `docs/getting-started.md`
@@ -41,7 +45,14 @@ macOS에서는 Python `3.11` 가상환경이 가장 안전합니다.
 
 ## 설치
 
-프로젝트 루트에서:
+GitHub에서 clone한 뒤, 저장소 루트에서:
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+```
+
+그 다음:
 
 ```bash
 python3.11 -m venv .venv
@@ -126,7 +137,7 @@ sub-memory-agent --once "지난번 출장 관련 TODO 기억나?"
 로컬 CLI 에이전트 연동은 `stdio` transport를 권장합니다.
 
 ```bash
-sub-memory-mcp --base-dir /absolute/path/to/repo
+sub-memory-mcp --base-dir <repo-root>
 ```
 
 노출되는 MCP tools:
@@ -146,9 +157,9 @@ sub-memory-mcp --base-dir /absolute/path/to/repo
 
 ```toml
 [mcp_servers.sub_memory]
-command = "/absolute/path/to/repo/.venv/bin/sub-memory-mcp"
-args = ["--base-dir", "/absolute/path/to/repo"]
-cwd = "/absolute/path/to/repo"
+command = "<repo-root>/.venv/bin/sub-memory-mcp"
+args = ["--base-dir", "<repo-root>"]
+cwd = "<repo-root>"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
 startup_timeout_sec = 90
 tool_timeout_sec = 120
@@ -160,9 +171,9 @@ tool_timeout_sec = 120
 {
   "mcpServers": {
     "sub_memory": {
-      "command": "/absolute/path/to/repo/.venv/bin/sub-memory-mcp",
-      "args": ["--base-dir", "/absolute/path/to/repo"],
-      "cwd": "/absolute/path/to/repo",
+      "command": "<repo-root>/.venv/bin/sub-memory-mcp",
+      "args": ["--base-dir", "<repo-root>"],
+      "cwd": "<repo-root>",
       "timeout": 30000
     }
   }
@@ -173,8 +184,8 @@ tool_timeout_sec = 120
 
 ```bash
 claude mcp add --transport stdio sub-memory -- \
-  /absolute/path/to/repo/.venv/bin/sub-memory-mcp \
-  --base-dir /absolute/path/to/repo
+  <repo-root>/.venv/bin/sub-memory-mcp \
+  --base-dir <repo-root>
 ```
 
 ## Codex skill
@@ -200,6 +211,39 @@ ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
 ```bash
 python -m unittest discover -s tests
 ```
+
+## 공유 기준
+
+다른 사람에게 공유할 때는 로컬 절대경로 대신 아래 두 가지만 전달하는 것이 안전합니다.
+
+- GitHub 저장소 URL
+- 기준 커밋 SHA 또는 태그
+
+예:
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+cd sub-memory-bootstrap
+git checkout <commit-or-tag>
+./sub-memory-bootstrap/scripts/bootstrap_local.sh .
+```
+
+## 동일 설치를 어떻게 맞출 수 있나
+
+완전한 의미의 100% 보장은 어렵지만, 아래 조건을 맞추면 실질적으로 같은 설치 결과에 가깝게 운영할 수 있습니다.
+
+1. 같은 Git commit 또는 release tag를 사용합니다.
+2. 같은 Python 버전을 사용합니다. 현재 권장값은 `python3.11`입니다.
+3. 같은 `.env` 핵심값을 사용합니다.
+   - `OPENAI_MODEL`
+   - `EMBEDDING_MODEL_NAME`
+   - `RECALL_DEPTH`
+   - `RECALL_LIMIT`
+   - compact 관련 값
+4. bootstrap 스크립트로 설치합니다.
+5. 설치 후 테스트를 실행합니다.
+
+즉, 공유할 때 가장 중요한 단위는 “내 로컬 경로”가 아니라 “같은 저장소의 같은 커밋 + 같은 설정”입니다.
 
 ## 참고
 
