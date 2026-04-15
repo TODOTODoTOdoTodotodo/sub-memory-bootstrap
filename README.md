@@ -54,6 +54,11 @@ $skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap/tr
 $skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
 ```
 
+`--path .`로 설치하면 전체 레포가 skill 디렉터리에 들어갑니다.
+`--path skills/sub-memory-bootstrap`로 설치하면 첫 bootstrap 실행 시
+`$CODEX_HOME/repos/sub-memory-bootstrap`
+또는 `~/.codex/repos/sub-memory-bootstrap` 아래에 전체 레포 checkout을 자동으로 받아 설치를 이어갑니다.
+
 수동으로 설치하는 경우에는 저장소 루트를 `~/.codex/skills/sub-memory-bootstrap`에 복사하거나 링크하면 됩니다.
 
 ```bash

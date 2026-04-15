@@ -1,12 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="${1:-$(pwd)}"
-PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REQUESTED_PROJECT_DIR="${1:-}"
 HOST="${SUB_MEMORY_WEB_HOST:-127.0.0.1}"
 PORT="${SUB_MEMORY_WEB_PORT:-8765}"
-WEB_BIN="$PROJECT_DIR/.venv/bin/sub-memory-web"
 BASE_DIR="${SUB_MEMORY_BASE_DIR:-$HOME/.codex/sub-memory}"
+
+if command -v python3.11 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.11"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+else
+  echo "python3.11 or python3 is required" >&2
+  exit 1
+fi
+
+RESOLVE_ARGS=("$PYTHON_BIN" "$SCRIPT_DIR/ensure_repo_checkout.py")
+if [[ -n "$REQUESTED_PROJECT_DIR" ]]; then
+  RESOLVE_ARGS+=("--project-dir" "$REQUESTED_PROJECT_DIR")
+fi
+
+PROJECT_DIR="$("${RESOLVE_ARGS[@]}")"
+WEB_BIN="$PROJECT_DIR/.venv/bin/sub-memory-web"
 
 if [[ ! -x "$WEB_BIN" ]]; then
   echo "sub-memory-web not found at $WEB_BIN" >&2

@@ -6,10 +6,16 @@ description: Use when the user wants to install or validate the local sub-memory
 # Sub-memory Bootstrap
 
 Use this skill for end-to-end local onboarding of the `sub-memory` repository.
+If the installed skill does not include a full repository checkout, it must clone a managed
+checkout into `$CODEX_HOME/repos/sub-memory-bootstrap`
+or `~/.codex/repos/sub-memory-bootstrap` before bootstrapping.
 
 ## Workflow
 
-1. Resolve the repository root and confirm these files exist:
+1. Resolve the repository root from one of these sources:
+   an explicit project path, the installed full-repo skill copy, or a managed checkout created
+   under `$CODEX_HOME/repos/sub-memory-bootstrap` (fallback `~/.codex/repos/sub-memory-bootstrap`).
+   Confirm these files exist:
    `requirements.txt`, `pyproject.toml`, `mcp_server.py`, `.env.example`
 2. If the local install is missing or stale, run:
    `scripts/bootstrap_local.sh <repo-root>`
@@ -56,6 +62,9 @@ If the user wants this skill installed globally for Codex, copy or symlink this 
 
 - `$CODEX_HOME/skills/sub-memory-bootstrap`
 - or `~/.codex/skills/sub-memory-bootstrap`
+
+If only this nested skill folder is installed, the first bootstrap run must fetch the full
+repository into the managed checkout path above so the install can proceed.
 
 ## Scope
 

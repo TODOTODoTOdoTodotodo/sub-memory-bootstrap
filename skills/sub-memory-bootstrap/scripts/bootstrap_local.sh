@@ -2,18 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="${1:-$(pwd)}"
-PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
-
-if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
-  echo "requirements.txt not found in $PROJECT_DIR" >&2
-  exit 1
-fi
-
-if [[ ! -f "$PROJECT_DIR/pyproject.toml" ]]; then
-  echo "pyproject.toml not found in $PROJECT_DIR" >&2
-  exit 1
-fi
+REQUESTED_PROJECT_DIR="${1:-}"
 
 if command -v python3.11 >/dev/null 2>&1; then
   PYTHON_BIN="python3.11"
@@ -23,6 +12,13 @@ else
   echo "python3.11 or python3 is required" >&2
   exit 1
 fi
+
+RESOLVE_ARGS=("$PYTHON_BIN" "$SCRIPT_DIR/ensure_repo_checkout.py")
+if [[ -n "$REQUESTED_PROJECT_DIR" ]]; then
+  RESOLVE_ARGS+=("--project-dir" "$REQUESTED_PROJECT_DIR")
+fi
+
+PROJECT_DIR="$("${RESOLVE_ARGS[@]}")"
 
 cd "$PROJECT_DIR"
 
