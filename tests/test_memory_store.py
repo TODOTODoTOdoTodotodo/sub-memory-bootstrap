@@ -106,6 +106,10 @@ class MemoryStoreTests(unittest.TestCase):
         self.assertEqual(graph["center_node_id"], first["node_id"])
         self.assertGreaterEqual(len(graph["nodes"]), 2)
         self.assertGreaterEqual(len(graph["edges"]), 1)
+        center_node = next(node for node in graph["nodes"] if node["node_id"] == first["node_id"])
+        self.assertIsNone(center_node["parent_id"])
+        child_nodes = [node for node in graph["nodes"] if node["node_id"] != first["node_id"]]
+        self.assertTrue(any(node["parent_id"] == first["node_id"] for node in child_nodes))
 
     def test_delete_memory_removes_only_target_node(self) -> None:
         first = self.store.store_memory("alpha", "first")

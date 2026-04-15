@@ -62,6 +62,22 @@ class WebTests(unittest.TestCase):
         ui_raw = urlopen(base_url + "/ui").read().decode("utf-8")
         self.assertIn("[ㄱ] 기억 시각화", ui_raw)
 
+        graph_ui_raw = urlopen(base_url + f"/ui/graph/{self.first['node_id']}").read().decode("utf-8")
+        self.assertIn("선택 기억", graph_ui_raw)
+        self.assertIn("다시 그리기", graph_ui_raw)
+        self.assertIn("branch-controls", graph_ui_raw)
+        self.assertIn("펼치기", graph_ui_raw)
+
+    def test_graph_api_exposes_parent_ids(self) -> None:
+        second = self.service.store_memory("beta", "second")
+        self.service.store_memory("gamma", "third")
+
+        base_url = f"http://127.0.0.1:{self.server.server_port}"
+        raw = urlopen(base_url + f"/api/graph/{self.first['node_id']}?depth=2&limit=10").read().decode("utf-8")
+        self.assertIn(f'"center_node_id": "{self.first["node_id"]}"', raw)
+        self.assertIn('"parent_id": null', raw)
+        self.assertIn(f'"parent_id": "{self.first["node_id"]}"', raw)
+
     def test_neuralizer_route_deletes_memory(self) -> None:
         base_url = f"http://127.0.0.1:{self.server.server_port}"
         request = Request(

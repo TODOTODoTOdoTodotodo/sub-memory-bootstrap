@@ -190,7 +190,7 @@ class MemoryStore:
         limit: int = 20,
     ) -> dict[str, Any]:
         with self._lock:
-            ordered_node_ids, depth_by_node = self._weighted_bfs_locked(
+            ordered_node_ids, depth_by_node, parent_by_node = self._weighted_bfs_locked(
                 node_id,
                 depth=depth,
                 limit=limit,
@@ -217,6 +217,7 @@ class MemoryStore:
                 "text": record.text,
                 "timestamp": record.timestamp,
                 "depth": depth_by_node.get(record.node_id, 0),
+                "parent_id": parent_by_node.get(record.node_id),
             }
             for record in records
             if record.node_id in node_set
@@ -378,7 +379,7 @@ class MemoryStore:
 
         seed = seed_matches[0]
         with self._lock:
-            ordered_node_ids, depth_by_node = self._weighted_bfs_locked(
+            ordered_node_ids, depth_by_node, _parent_by_node = self._weighted_bfs_locked(
                 seed.node_id,
                 depth=depth,
                 limit=self._settings.recall_limit,
@@ -618,12 +619,13 @@ class MemoryStore:
         seed_id: str,
         depth: int,
         limit: int,
-    ) -> tuple[list[str], dict[str, int]]:
+    ) -> tuple[list[str], dict[str, int], dict[str, str | None]]:
         if seed_id not in self._graph:
-            return [], {}
+            return [], {}, {}
 
         visited = {seed_id}
         depth_by_node = {seed_id: 0}
+        parent_by_node = {seed_id: None}
         ordered_node_ids = [seed_id]
         queue = deque([seed_id])
 
@@ -643,12 +645,13 @@ class MemoryStore:
                     continue
                 visited.add(neighbor_id)
                 depth_by_node[neighbor_id] = current_depth + 1
+                parent_by_node[neighbor_id] = current
                 ordered_node_ids.append(neighbor_id)
                 queue.append(neighbor_id)
                 if len(ordered_node_ids) >= limit:
                     break
 
-        return ordered_node_ids, depth_by_node
+        return ordered_node_ids, depth_by_node, parent_by_node
 
     def _upsert_edge_locked(
         self,

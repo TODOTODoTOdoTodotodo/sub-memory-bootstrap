@@ -6,6 +6,8 @@ __pycache__/
 .DS_Store
 .env
 memory.db
+memory.db-shm
+memory.db-wal
 *.egg-info/
 build/
 dist/
