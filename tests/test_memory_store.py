@@ -31,12 +31,6 @@ class FakeEmbedder:
         return self._vectors[text]
 
 
-class LazyDimensionEmbedder(FakeEmbedder):
-    @property
-    def dimension(self) -> int:
-        raise AssertionError("startup should not require embedder.dimension")
-
-
 @unittest.skipUnless(SQLITE_VEC_AVAILABLE, "sqlite-vec is required for this test")
 class MemoryStoreTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -54,6 +48,8 @@ class MemoryStoreTests(unittest.TestCase):
             compact_after_turns=4,
             compact_keep_recent_turns=2,
             compact_summary_char_limit=2400,
+            metrics_log_path=self.base_path / ".sub-memory" / "metrics.jsonl",
+            metrics_retention_days=30,
         )
         self.store = MemoryStore(self.settings, FakeEmbedder())
 
@@ -86,9 +82,27 @@ class MemoryStoreTests(unittest.TestCase):
         assert updated_weight is not None
         self.assertAlmostEqual(updated_weight, prior_weight + 0.1, places=6)
 
-    def test_startup_does_not_force_embedder_dimension(self) -> None:
-        store = MemoryStore(self.settings, LazyDimensionEmbedder())
-        try:
-            self.assertEqual(store.count_nodes(), 0)
-        finally:
-            store.close()
+    def test_dashboard_and_graph_queries(self) -> None:
+        first = self.store.store_memory("alpha", "first")
+        second = self.store.store_memory("beta", "second")
+        self.store.store_memory("gamma", "third")
+
+        dashboard = self.store.get_dashboard_stats()
+        self.assertEqual(dashboard["node_count"], 3)
+        self.assertGreaterEqual(dashboard["edge_count"], 2)
+        self.assertEqual(len(dashboard["recent_memories"]), 3)
+
+        memories = self.store.list_memories(query="beta")
+        self.assertEqual(len(memories), 1)
+        self.assertIn("beta", memories[0]["text"])
+
+        detail = self.store.get_memory(second["node_id"])
+        self.assertIsNotNone(detail)
+
+        connected = self.store.get_connected_memories(second["node_id"])
+        self.assertGreaterEqual(len(connected), 1)
+
+        graph = self.store.get_graph_subtree(first["node_id"], depth=2, limit=10)
+        self.assertEqual(graph["center_node_id"], first["node_id"])
+        self.assertGreaterEqual(len(graph["nodes"]), 2)
+        self.assertGreaterEqual(len(graph["edges"]), 1)

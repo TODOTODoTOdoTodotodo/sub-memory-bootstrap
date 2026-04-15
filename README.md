@@ -5,23 +5,37 @@
 
 영문 표기는 `Giyeok`을 권장합니다.
 
-이 저장소에는 두 가지가 함께 들어 있습니다.
+## 빠른 시작
 
-- `sub_memory` 본체 코드
-- Codex 온보딩용 `sub-memory-bootstrap` skill
+가장 짧은 확인 경로는 아래입니다.
 
-즉, 이 저장소 하나만 clone하면 로컬 설치와 Codex MCP 온보딩까지 모두 처리할 수 있습니다.
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+cp .env.example .env
+sub-memory-web --base-dir .
+```
 
-GitHub 저장소:
+브라우저에서 직접 아래 주소를 열면 됩니다.
 
-- `https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap`
+```text
+http://127.0.0.1:8765/ui
+```
+
+`sub-memory-bootstrap` 스킬을 쓰는 경우에는 아래처럼 요청하면 됩니다.
+
+```text
+sub-memory-bootstrap으로 현재 저장소를 설치하고 웹 UI를 실행한 뒤 브라우저에서 열 주소를 알려줘.
+```
 
 ## 문서
 
 - `docs/getting-started.md`
 - `docs/usage-examples.md`
 - `docs/giyeok-manual.md`
-- `sub-memory-bootstrap/`
+- `skills/sub-memory-bootstrap/`
 
 ## 구성
 
@@ -33,7 +47,6 @@ GitHub 저장소:
 - `sub_memory/store.py`: SQLite + `sqlite-vec` + `networkx` 기반 저장/회수/강화
 - `sub_memory/tools.py`: tool schema와 디스패처
 - `tests/`: 단위 테스트
-- `sub-memory-bootstrap/`: Codex skill과 bootstrap 스크립트
 
 ## 요구 사항
 
@@ -45,27 +58,12 @@ macOS에서는 Python `3.11` 가상환경이 가장 안전합니다.
 
 ## 설치
 
-GitHub에서 clone한 뒤, 저장소 루트에서:
-
-```bash
-git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
-cd sub-memory-bootstrap
-```
-
-그 다음:
-
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 pip install -e .
-```
-
-또는 Codex skill bootstrap으로 한 번에:
-
-```bash
-./sub-memory-bootstrap/scripts/bootstrap_local.sh .
 ```
 
 `.env`에서 필요한 값을 채웁니다.
@@ -81,6 +79,8 @@ COMPACT_AFTER_TURNS=4
 COMPACT_KEEP_RECENT_TURNS=2
 COMPACT_SUMMARY_CHAR_LIMIT=2400
 MEMORY_DB_PATH=memory.db
+METRICS_LOG_PATH=.sub-memory/metrics.jsonl
+METRICS_RETENTION_DAYS=30
 ```
 
 설정 의미:
@@ -95,6 +95,10 @@ MEMORY_DB_PATH=memory.db
   - compact 후에도 최근 원문으로 남길 턴 수
 - `COMPACT_SUMMARY_CHAR_LIMIT`
   - compact summary 최대 길이
+- `METRICS_LOG_PATH`
+  - memory contribution 및 토큰 인사이트 로그 경로
+- `METRICS_RETENTION_DAYS`
+  - 메트릭 로그 보관 기간
 
 ## 실행
 
@@ -137,7 +141,7 @@ sub-memory-agent --once "지난번 출장 관련 TODO 기억나?"
 로컬 CLI 에이전트 연동은 `stdio` transport를 권장합니다.
 
 ```bash
-sub-memory-mcp --base-dir <repo-root>
+sub-memory-mcp --base-dir /absolute/path/to/sub-memory
 ```
 
 노출되는 MCP tools:
@@ -147,38 +151,42 @@ sub-memory-mcp --base-dir <repo-root>
 - `reinforce_memory`
 - `get_memory_status`
 
-`sub-memory-bootstrap` 스킬 또는 bootstrap 스크립트를 사용하면 아래까지 한 번에 준비할 수 있습니다.
+`sub-memory-bootstrap` 스킬을 사용하면 아래까지 한 번에 준비할 수 있습니다.
 
 - project-local `.codex/config.toml`
 - `AGENTS.md`의 `sub_memory` 사용 규칙
 - CLI 연동용 설정 스니펫
 
-중요:
+## 웹 시각화 MVP
 
-- `.codex/config.toml`은 사용자 전역 설정이 아니라 저장소별 project-local 설정입니다.
-- 즉, `sub-memory-bootstrap`을 실행한 각 저장소마다 해당 저장소의 `.codex/config.toml`이 생성됩니다.
-- 새 Codex 세션은 해당 저장소 루트에서 시작해야 이 설정이 자동으로 적용됩니다.
+기본 뼈대 화면은 아래 명령으로 실행합니다.
 
-권장 `.gitignore`:
-
-```gitignore
-.codex/
-.env
-.venv/
-memory.db
+```bash
+sub-memory-web --base-dir .
 ```
 
-현재 bootstrap이 만드는 `.codex` 하위 파일은 기본적으로 `.codex/config.toml`입니다.
+기본 주소:
+
+```text
+http://127.0.0.1:8765/ui
+```
+
+현재 제공 화면:
+
+- Dashboard
+- Memory Search
+- Memory Detail
+- Association Graph
 
 ## Codex 예시
 
 ```toml
 [mcp_servers.sub_memory]
-command = "<repo-root>/.venv/bin/sub-memory-mcp"
-args = ["--base-dir", "<repo-root>"]
-cwd = "<repo-root>"
+command = "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp"
+args = ["--base-dir", "/absolute/path/to/sub-memory"]
+cwd = "/absolute/path/to/sub-memory"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
-startup_timeout_sec = 90
+startup_timeout_sec = 30
 tool_timeout_sec = 120
 ```
 
@@ -188,9 +196,9 @@ tool_timeout_sec = 120
 {
   "mcpServers": {
     "sub_memory": {
-      "command": "<repo-root>/.venv/bin/sub-memory-mcp",
-      "args": ["--base-dir", "<repo-root>"],
-      "cwd": "<repo-root>",
+      "command": "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp",
+      "args": ["--base-dir", "/absolute/path/to/sub-memory"],
+      "cwd": "/absolute/path/to/sub-memory",
       "timeout": 30000
     }
   }
@@ -201,44 +209,9 @@ tool_timeout_sec = 120
 
 ```bash
 claude mcp add --transport stdio sub-memory -- \
-  <repo-root>/.venv/bin/sub-memory-mcp \
-  --base-dir <repo-root>
+  /absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp \
+  --base-dir /absolute/path/to/sub-memory
 ```
-
-## Codex skill
-
-이 저장소에는 Codex용 온보딩 skill도 포함되어 있습니다.
-
-- skill 경로: `sub-memory-bootstrap/`
-- 역할:
-  - 로컬 설치 점검
-  - project-local MCP 등록
-  - `AGENTS.md` 규칙 반영
-  - 설정 스니펫 출력
-
-전역 설치 예시:
-
-```bash
-mkdir -p ~/.codex/skills
-ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
-```
-
-`sub-memory-bootstrap`이 `AGENTS.md`에 추가하는 managed block의 핵심 규칙:
-
-- `get_memory_status`
-  - prior memory가 중요할 수 있는 작업 전에 확인
-- `recall_associated_memory`
-  - 설계 결정, 통합 이력, TODO 문맥이 필요할 때 답변 전에 호출
-- `store_memory`
-  - 각 non-empty user turn 뒤에 최신 요청과 최종 답변을 저장
-- `reinforce_memory`
-  - recall된 기억이 실제 답변에 영향을 줬을 때 강화
-- compact
-  - 멀티턴이 길어지면 짧은 working summary와 recall 조합으로 계속 진행
-- 세션 안내
-  - `sub_memory` tools가 없으면 `.codex/config.toml`이 project-local이라는 점과 새 세션 필요성을 설명
-
-이 block은 `<!-- BEGIN SUB-MEMORY MCP RULES -->` 와 `<!-- END SUB-MEMORY MCP RULES -->` 사이에서 관리됩니다.
 
 ## 테스트
 
@@ -246,42 +219,32 @@ ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
 python -m unittest discover -s tests
 ```
 
-## 공유 기준
+## 메트릭 로그
 
-다른 사람에게 공유할 때는 로컬 절대경로 대신 아래 두 가지만 전달하는 것이 안전합니다.
+`[ㄱ]`은 기본적으로 아래 경로에 JSONL 메트릭 로그를 남깁니다.
 
-- GitHub 저장소 URL
-- 기준 커밋 SHA 또는 태그
-
-예:
-
-```bash
-git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
-cd sub-memory-bootstrap
-git checkout <commit-or-tag>
-./sub-memory-bootstrap/scripts/bootstrap_local.sh .
+```text
+.sub-memory/metrics.jsonl
 ```
 
-## 동일 설치를 어떻게 맞출 수 있나
+여기에는 두 종류가 쌓입니다.
 
-완전한 의미의 100% 보장은 어렵지만, 아래 조건을 맞추면 실질적으로 같은 설치 결과에 가깝게 운영할 수 있습니다.
+- `agent_turn`
+  - `local_agent` 기준 입력/출력 토큰, recall 크기, session context 크기
+- `mcp_*`
+  - `sub-memory-mcp` 기준 recall/store/reinforce/status 호출량과 memory contribution 크기
 
-1. 같은 Git commit 또는 release tag를 사용합니다.
-2. 같은 Python 버전을 사용합니다. 현재 권장값은 `python3.11`입니다.
-3. 같은 `.env` 핵심값을 사용합니다.
-   - `OPENAI_MODEL`
-   - `EMBEDDING_MODEL_NAME`
-   - `RECALL_DEPTH`
-   - `RECALL_LIMIT`
-   - compact 관련 값
-4. bootstrap 스크립트로 설치합니다.
-5. 설치 후 테스트를 실행합니다.
+개인용 기본 보관 기간은 30일입니다.
 
-즉, 공유할 때 가장 중요한 단위는 “내 로컬 경로”가 아니라 “같은 저장소의 같은 커밋 + 같은 설정”입니다.
+요약 예시:
+
+```bash
+python scripts/summarize_metrics.py --path .sub-memory/metrics.jsonl
+```
 
 ## 참고
 
 - 일반 사용자용 설명: `docs/giyeok-manual.md`
 - 설치와 첫 실행: `docs/getting-started.md`
 - 실전 프롬프트 예시: `docs/usage-examples.md`
-- Codex 온보딩 스킬: `sub-memory-bootstrap/`
+- Codex 온보딩 스킬: `skills/sub-memory-bootstrap/`

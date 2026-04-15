@@ -5,11 +5,13 @@ from dataclasses import dataclass
 import argparse
 import json
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from openai import OpenAI, OpenAIError
 
 from sub_memory.config import Settings
+from sub_memory.metrics import MetricsLogger, count_chars, estimate_tokens_from_text
 from sub_memory.service import MemoryService
 from sub_memory.tools import ToolRegistry
 
@@ -32,6 +34,7 @@ class TurnResult:
     recalled_node_ids: set[str]
     store_called_manually: bool
     reinforce_called_manually: bool
+    usage: dict[str, int]
 
 
 @dataclass(slots=True)
@@ -74,6 +77,15 @@ class SessionContext:
             parts.append("Recent uncompressed turns:\nNone yet.")
 
         return "\n\n".join(parts)
+
+    def summary_char_count(self) -> int:
+        return len(self._summary)
+
+    def recent_turns_char_count(self) -> int:
+        return sum(
+            len(turn.user_text) + len(turn.answer)
+            for turn in self._recent_turns
+        )
 
     def append_turn(self, user_text: str, answer: str) -> bool:
         self._recent_turns.append(SessionTurn(user_text=user_text, answer=answer))
@@ -137,6 +149,10 @@ class LocalMemoryAgent:
         self._tools = ToolRegistry(self._store)
         self._client = OpenAI(api_key=settings.openai_api_key)
         self._executor = ThreadPoolExecutor(max_workers=4)
+        self._metrics = MetricsLogger(
+            settings.metrics_log_path,
+            retention_days=settings.metrics_retention_days,
+        )
         self._session_context = SessionContext(
             compact_after_turns=settings.compact_after_turns,
             keep_recent_turns=settings.compact_keep_recent_turns,
@@ -177,6 +193,7 @@ class LocalMemoryAgent:
         return self.handle_turn(prompt)
 
     def handle_turn(self, user_text: str) -> str:
+        turn_started = perf_counter()
         recall_future = self._executor.submit(
             self._store.recall_associated_memory,
             user_text,
@@ -213,33 +230,63 @@ class LocalMemoryAgent:
             )
 
         self._session_context.append_turn(user_text, turn_result.answer)
+        self._metrics.log_event(
+            "agent_turn",
+            {
+                "duration_ms": round((perf_counter() - turn_started) * 1000, 3),
+                "user_chars": len(user_text),
+                "answer_chars": len(turn_result.answer),
+                "summary_chars": self._session_context.summary_char_count(),
+                "recent_turn_chars": self._session_context.recent_turns_char_count(),
+                "recalled_memory_count": len(recall_result.get("memories", [])),
+                "recalled_memory_chars": sum(
+                    len(memory.get("text", ""))
+                    for memory in recall_result.get("memories", [])
+                ),
+                "memory_context_chars": count_chars(
+                    self._build_memory_context_only(recall_result)
+                ),
+                "estimated_memory_context_tokens": estimate_tokens_from_text(
+                    self._build_memory_context_only(recall_result)
+                ),
+                "system_prompt_chars": len(system_prompt),
+                "input_tokens": turn_result.usage.get("input_tokens", 0),
+                "output_tokens": turn_result.usage.get("output_tokens", 0),
+                "total_tokens": turn_result.usage.get("total_tokens", 0),
+            },
+        )
         return turn_result.answer
 
     def _build_system_prompt(self, recall_result: dict[str, Any]) -> str:
-        memories = recall_result.get("memories", [])
-        if not memories:
-            memory_block = "No relevant prior memories were retrieved for this turn."
-        else:
-            formatted = []
-            for memory in memories:
-                formatted.append(
-                    f"- [{memory['node_id']}] depth={memory['depth']} "
-                    f"{memory['text']}"
-                )
-            memory_block = "\n".join(formatted)
-
-        error_line = ""
-        if "error" in recall_result:
-            error_line = (
-                "\nAutomatic recall warning: "
-                f"{recall_result['error']}. You may call recall_associated_memory yourself."
-            )
+        memory_block = self._build_memory_context_only(recall_result)
+        error_line = self._build_recall_error_line(recall_result)
 
         session_block = self._session_context.render()
         return (
             f"{BASE_INSTRUCTIONS}\n"
             f"Retrieved memory context:\n{memory_block}{error_line}\n\n"
             f"Active session context:\n{session_block}"
+        )
+
+    def _build_memory_context_only(self, recall_result: dict[str, Any]) -> str:
+        memories = recall_result.get("memories", [])
+        if not memories:
+            return "No relevant prior memories were retrieved for this turn."
+
+        formatted = []
+        for memory in memories:
+            formatted.append(
+                f"- [{memory['node_id']}] depth={memory['depth']} "
+                f"{memory['text']}"
+            )
+        return "\n".join(formatted)
+
+    def _build_recall_error_line(self, recall_result: dict[str, Any]) -> str:
+        if "error" not in recall_result:
+            return ""
+        return (
+            "\nAutomatic recall warning: "
+            f"{recall_result['error']}. You may call recall_associated_memory yourself."
         )
 
     def _generate_response(
@@ -252,6 +299,11 @@ class LocalMemoryAgent:
         recalled_node_ids = set(recall_result.get("node_ids", []))
         store_called_manually = False
         reinforce_called_manually = False
+        usage_totals = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
 
         while True:
             try:
@@ -265,6 +317,8 @@ class LocalMemoryAgent:
                 )
             except OpenAIError as exc:
                 raise RuntimeError(f"OpenAI response generation failed: {exc}") from exc
+
+            self._merge_usage_totals(usage_totals, response)
 
             serialized_output = [
                 self._serialize_item(item) for item in getattr(response, "output", [])
@@ -285,6 +339,7 @@ class LocalMemoryAgent:
                     recalled_node_ids=recalled_node_ids,
                     store_called_manually=store_called_manually,
                     reinforce_called_manually=reinforce_called_manually,
+                    usage=usage_totals,
                 )
 
             input_items.extend(serialized_output)
@@ -334,6 +389,44 @@ class LocalMemoryAgent:
         if isinstance(item, dict):
             return item
         raise TypeError(f"Unsupported response item type: {type(item)!r}")
+
+    def _merge_usage_totals(self, totals: dict[str, int], response: Any) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+
+        input_tokens = self._read_usage_value(
+            usage,
+            "input_tokens",
+            "prompt_tokens",
+        )
+        output_tokens = self._read_usage_value(
+            usage,
+            "output_tokens",
+            "completion_tokens",
+        )
+        total_tokens = self._read_usage_value(
+            usage,
+            "total_tokens",
+        )
+
+        totals["input_tokens"] += input_tokens
+        totals["output_tokens"] += output_tokens
+        totals["total_tokens"] += (
+            total_tokens if total_tokens else input_tokens + output_tokens
+        )
+
+    def _read_usage_value(self, usage: Any, *names: str) -> int:
+        for name in names:
+            if hasattr(usage, name):
+                value = getattr(usage, name)
+            elif isinstance(usage, dict):
+                value = usage.get(name)
+            else:
+                value = None
+            if isinstance(value, int):
+                return value
+        return 0
 
 
 def build_parser() -> argparse.ArgumentParser:

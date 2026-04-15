@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import tempfile
+import threading
 import unittest
-
-import anyio
+from urllib.request import urlopen
 
 try:
     import sqlite_vec  # noqa: F401
@@ -13,14 +13,16 @@ except ImportError:  # pragma: no cover - depends on native extension
 else:
     SQLITE_VEC_AVAILABLE = True
 
+from http.server import ThreadingHTTPServer
+
 from sub_memory.config import Settings
-from sub_memory.mcp_server import build_mcp_server
 from sub_memory.service import MemoryService
+from sub_memory.web import build_handler
 from tests.test_memory_store import FakeEmbedder
 
 
 @unittest.skipUnless(SQLITE_VEC_AVAILABLE, "sqlite-vec is required for this test")
-class MCPServerTests(unittest.TestCase):
+class WebTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.base_path = Path(self.temp_dir.name)
@@ -39,40 +41,27 @@ class MCPServerTests(unittest.TestCase):
             metrics_log_path=self.base_path / ".sub-memory" / "metrics.jsonl",
             metrics_retention_days=30,
         )
-        self.service = MemoryService.from_settings(
-            self.settings,
-            embedder=FakeEmbedder(),
-        )
-        self.server = build_mcp_server(self.service, log_level="ERROR")
+        self.service = MemoryService.from_settings(self.settings, embedder=FakeEmbedder())
+        self.service.store_memory("alpha", "first")
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), build_handler(self.service))
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
 
     def tearDown(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
         self.service.close()
         self.temp_dir.cleanup()
 
-    def test_registered_tools_and_store_flow(self) -> None:
-        async def run_test() -> None:
-            tools = await self.server.list_tools()
-            tool_names = {tool.name for tool in tools}
-            self.assertEqual(
-                tool_names,
-                {
-                    "recall_associated_memory",
-                    "store_memory",
-                    "reinforce_memory",
-                    "get_memory_status",
-                },
-            )
+    def test_status_and_ui_routes(self) -> None:
+        base_url = f"http://127.0.0.1:{self.server.server_port}"
+        status_raw = urlopen(base_url + "/api/status").read().decode("utf-8")
+        self.assertIn('"node_count": 1', status_raw)
 
-            _contents, store_result = await self.server.call_tool(
-                "store_memory",
-                {"user_text": "alpha", "ai_response": "first"},
-            )
-            self.assertEqual(store_result["status"], "stored")
+        ui_raw = urlopen(base_url + "/ui").read().decode("utf-8")
+        self.assertIn("[ㄱ] 기억 시각화", ui_raw)
 
-            _contents, status_result = await self.server.call_tool(
-                "get_memory_status",
-                {},
-            )
-            self.assertEqual(status_result["node_count"], 1)
 
-        anyio.run(run_test)
+if __name__ == "__main__":
+    unittest.main()

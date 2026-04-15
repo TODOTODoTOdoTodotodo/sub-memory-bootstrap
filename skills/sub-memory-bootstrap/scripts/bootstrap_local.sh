@@ -43,12 +43,15 @@ Bootstrap complete.
 Project: $PROJECT_DIR
 Agent entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-agent
 MCP entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-mcp
+Web entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-web
 Codex project config: $PROJECT_DIR/.codex/config.toml
 AGENTS rules: $PROJECT_DIR/AGENTS.md
 
 Next recommended checks:
   $PROJECT_DIR/.venv/bin/sub-memory-agent --help
   $PROJECT_DIR/.venv/bin/sub-memory-mcp --help
+  $PROJECT_DIR/.venv/bin/sub-memory-web --help
   $PROJECT_DIR/.venv/bin/python -m unittest discover -s tests
   Start a new Codex session from $PROJECT_DIR
+  Optional web UI: $PROJECT_DIR/skills/sub-memory-bootstrap/scripts/start_web_ui.sh $PROJECT_DIR
 EOF

@@ -49,6 +49,8 @@ class Settings:
     compact_after_turns: int
     compact_keep_recent_turns: int
     compact_summary_char_limit: int
+    metrics_log_path: Path
+    metrics_retention_days: int
     exit_commands: tuple[str, ...] = ("exit", "quit")
 
     @classmethod
@@ -76,4 +78,9 @@ class Settings:
                 "COMPACT_SUMMARY_CHAR_LIMIT",
                 2400,
             ),
+            metrics_log_path=(
+                resolved_base_dir
+                / os.getenv("METRICS_LOG_PATH", ".sub-memory/metrics.jsonl")
+            ).resolve(),
+            metrics_retention_days=_read_int("METRICS_RETENTION_DAYS", 30),
         )

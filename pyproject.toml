@@ -19,7 +19,7 @@ dependencies = [
 [project.scripts]
 sub-memory-agent = "sub_memory.agent:main"
 sub-memory-mcp = "sub_memory.mcp_server:main"
+sub-memory-web = "sub_memory.web:main"
 
 [tool.setuptools.packages.find]
 include = ["sub_memory*"]
-

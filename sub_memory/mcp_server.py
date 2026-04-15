@@ -4,18 +4,20 @@ import argparse
 import logging
 from pathlib import Path
 import sys
+from time import perf_counter
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from sub_memory.config import Settings
+from sub_memory.metrics import MetricsLogger, count_chars, estimate_tokens_from_text
 from sub_memory.service import MemoryService
 
 
 MCP_INSTRUCTIONS = """Local memory tools backed by SQLite, sqlite-vec, networkx, and local embeddings.
 
 Use recall_associated_memory to fetch relevant prior memory before answering.
-After each non-empty user turn, call store_memory with the latest user request and your final answer unless the current host runtime already stores turns automatically.
+After each substantive turn, call store_memory with the latest user request and your final answer unless the current host runtime already stores turns automatically.
 Use reinforce_memory after the answer when recalled memory materially influenced the answer.
 If a multi-turn session grows long, compact the active thread into a short working summary and rely on that summary plus recalled memory instead of the full raw transcript.
 """
@@ -32,6 +34,7 @@ def configure_logging(level: str) -> None:
 def build_mcp_server(
     service: MemoryService,
     *,
+    metrics_logger: MetricsLogger | None = None,
     log_level: str = "INFO",
     host: str = "127.0.0.1",
     port: int = 8000,
@@ -54,7 +57,31 @@ def build_mcp_server(
     )
     def recall_associated_memory(query: str, depth: int = 2) -> dict[str, Any]:
         """Recall related memory nodes for a natural-language query."""
-        return service.recall_associated_memory(query=query, depth=depth)
+        started = perf_counter()
+        result = service.recall_associated_memory(query=query, depth=depth)
+        if metrics_logger is not None:
+            memory_chars = sum(
+                len(memory.get("text", "")) for memory in result.get("memories", [])
+            )
+            metrics_logger.log_event(
+                "mcp_recall",
+                {
+                    "duration_ms": round((perf_counter() - started) * 1000, 3),
+                    "query_chars": len(query),
+                    "depth": depth,
+                    "seed_id": result.get("seed_id"),
+                    "seed_distance": result.get("seed_distance"),
+                    "node_count": len(result.get("node_ids", [])),
+                    "memory_chars": memory_chars,
+                    "estimated_memory_tokens": estimate_tokens_from_text(
+                        "\n".join(
+                            memory.get("text", "")
+                            for memory in result.get("memories", [])
+                        )
+                    ),
+                },
+            )
+        return result
 
     @server.tool(
         name="store_memory",
@@ -66,7 +93,20 @@ def build_mcp_server(
     )
     def store_memory(user_text: str, ai_response: str) -> dict[str, Any]:
         """Persist a new memory node using the provided conversation turn."""
-        return service.store_memory(user_text=user_text, ai_response=ai_response)
+        started = perf_counter()
+        result = service.store_memory(user_text=user_text, ai_response=ai_response)
+        if metrics_logger is not None:
+            metrics_logger.log_event(
+                "mcp_store",
+                {
+                    "duration_ms": round((perf_counter() - started) * 1000, 3),
+                    "user_chars": len(user_text),
+                    "answer_chars": len(ai_response),
+                    "stored_chars": len(user_text) + len(ai_response),
+                    "node_id": result.get("node_id"),
+                },
+            )
+        return result
 
     @server.tool(
         name="reinforce_memory",
@@ -78,7 +118,18 @@ def build_mcp_server(
     )
     def reinforce_memory(node_ids: list[str]) -> dict[str, Any]:
         """Increase edge weights between the provided memory node IDs."""
-        return service.reinforce_memory(node_ids=node_ids)
+        started = perf_counter()
+        result = service.reinforce_memory(node_ids=node_ids)
+        if metrics_logger is not None:
+            metrics_logger.log_event(
+                "mcp_reinforce",
+                {
+                    "duration_ms": round((perf_counter() - started) * 1000, 3),
+                    "input_node_count": len(node_ids),
+                    "updated_edge_count": len(result.get("updated_edges", [])),
+                },
+            )
+        return result
 
     @server.tool(
         name="get_memory_status",
@@ -90,7 +141,18 @@ def build_mcp_server(
     )
     def get_memory_status() -> dict[str, Any]:
         """Expose the current local memory store configuration and node count."""
-        return service.get_status()
+        started = perf_counter()
+        result = service.get_status()
+        if metrics_logger is not None:
+            metrics_logger.log_event(
+                "mcp_status",
+                {
+                    "duration_ms": round((perf_counter() - started) * 1000, 3),
+                    "result_chars": count_chars(result),
+                    "node_count": result.get("node_count", 0),
+                },
+            )
+        return result
 
     return server
 
@@ -137,6 +199,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         settings = Settings.from_env(Path(args.base_dir))
         service = MemoryService.from_settings(settings)
+        metrics_logger = MetricsLogger(
+            settings.metrics_log_path,
+            retention_days=settings.metrics_retention_days,
+        )
     except Exception as exc:
         logging.getLogger(__name__).error("Failed to initialize memory service: %s", exc)
         return 1
@@ -144,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server = build_mcp_server(
             service,
+            metrics_logger=metrics_logger,
             log_level=args.log_level,
             host=args.host,
             port=args.port,

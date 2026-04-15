@@ -29,6 +29,11 @@ class MemoryMatch(MemoryRecord):
     distance: float
 
 
+@dataclass(slots=True)
+class ConnectedMemory(MemoryRecord):
+    weight: float
+
+
 def _serialize_vector(values: list[float]) -> bytes:
     try:
         import sqlite_vec  # type: ignore
@@ -74,6 +79,196 @@ class MemoryStore:
         assert row is not None
         return int(row["count"])
 
+    def count_edges(self) -> int:
+        row = self._conn.execute("SELECT COUNT(*) AS count FROM edges").fetchone()
+        assert row is not None
+        return int(row["count"])
+
+    def list_memories(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        query: str | None = None,
+    ) -> list[dict[str, Any]]:
+        sql = """
+            SELECT
+                n.id,
+                n.text,
+                n.timestamp,
+                COUNT(e.source_id) + COUNT(e2.target_id) AS connection_count
+            FROM nodes n
+            LEFT JOIN edges e ON e.source_id = n.id
+            LEFT JOIN edges e2 ON e2.target_id = n.id
+        """
+        params: list[Any] = []
+        if query and query.strip():
+            sql += " WHERE n.text LIKE ?"
+            params.append(f"%{query.strip()}%")
+
+        sql += """
+            GROUP BY n.id, n.text, n.timestamp
+            ORDER BY n.timestamp DESC
+            LIMIT ? OFFSET ?
+        """
+        params.extend([limit, offset])
+
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+
+        return [
+            {
+                "node_id": row["id"],
+                "text": row["text"],
+                "timestamp": row["timestamp"],
+                "connection_count": int(row["connection_count"] or 0),
+            }
+            for row in rows
+        ]
+
+    def get_memory(self, node_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                """
+                SELECT id, text, timestamp
+                FROM nodes
+                WHERE id = ?
+                """,
+                (node_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+        return {
+            "node_id": row["id"],
+            "text": row["text"],
+            "timestamp": row["timestamp"],
+        }
+
+    def get_connected_memories(
+        self,
+        node_id: str,
+        *,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                WITH connected AS (
+                    SELECT target_id AS connected_id, weight
+                    FROM edges
+                    WHERE source_id = ?
+                    UNION ALL
+                    SELECT source_id AS connected_id, weight
+                    FROM edges
+                    WHERE target_id = ?
+                )
+                SELECT n.id, n.text, n.timestamp, c.weight
+                FROM connected c
+                JOIN nodes n ON n.id = c.connected_id
+                ORDER BY c.weight DESC, n.timestamp DESC
+                LIMIT ?
+                """,
+                (node_id, node_id, limit),
+            ).fetchall()
+
+        return [
+            {
+                "node_id": row["id"],
+                "text": row["text"],
+                "timestamp": row["timestamp"],
+                "weight": float(row["weight"]),
+            }
+            for row in rows
+        ]
+
+    def get_graph_subtree(
+        self,
+        node_id: str,
+        *,
+        depth: int = 2,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        with self._lock:
+            ordered_node_ids, depth_by_node = self._weighted_bfs_locked(
+                node_id,
+                depth=depth,
+                limit=limit,
+            )
+            if not ordered_node_ids:
+                return {"center_node_id": node_id, "nodes": [], "edges": []}
+
+            records = self._fetch_nodes_locked(ordered_node_ids)
+            node_set = set(ordered_node_ids)
+            edge_rows = self._conn.execute(
+                f"""
+                SELECT source_id, target_id, weight
+                FROM edges
+                WHERE source_id IN ({", ".join("?" for _ in ordered_node_ids)})
+                  AND target_id IN ({", ".join("?" for _ in ordered_node_ids)})
+                ORDER BY weight DESC
+                """,
+                ordered_node_ids + ordered_node_ids,
+            ).fetchall()
+
+        nodes = [
+            {
+                "node_id": record.node_id,
+                "text": record.text,
+                "timestamp": record.timestamp,
+                "depth": depth_by_node.get(record.node_id, 0),
+            }
+            for record in records
+            if record.node_id in node_set
+        ]
+        edges = [
+            {
+                "source_id": row["source_id"],
+                "target_id": row["target_id"],
+                "weight": float(row["weight"]),
+            }
+            for row in edge_rows
+        ]
+        return {
+            "center_node_id": node_id,
+            "nodes": nodes,
+            "edges": edges,
+        }
+
+    def get_dashboard_stats(self) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS node_count,
+                    MAX(timestamp) AS last_timestamp,
+                    SUM(CASE
+                        WHEN datetime(timestamp) >= datetime('now', '-1 day')
+                        THEN 1 ELSE 0 END) AS recent_24h_count,
+                    SUM(CASE
+                        WHEN datetime(timestamp) >= datetime('now', '-7 day')
+                        THEN 1 ELSE 0 END) AS recent_7d_count
+                FROM nodes
+                """
+            ).fetchone()
+            edge_count = self.count_edges()
+            recent_memories = self.list_memories(limit=10, offset=0)
+
+        assert row is not None
+        node_count = int(row["node_count"] or 0)
+        return {
+            "db_path": str(self._settings.db_path),
+            "node_count": node_count,
+            "edge_count": edge_count,
+            "last_timestamp": row["last_timestamp"],
+            "recent_24h_count": int(row["recent_24h_count"] or 0),
+            "recent_7d_count": int(row["recent_7d_count"] or 0),
+            "average_connections": round((edge_count * 2 / node_count), 3)
+            if node_count
+            else 0.0,
+            "recent_memories": recent_memories,
+        }
+
     def get_edge_weight(self, left_id: str, right_id: str) -> float | None:
         source_id, target_id = sorted((left_id, right_id))
         row = self._conn.execute(
@@ -95,7 +290,6 @@ class MemoryStore:
         timestamp = datetime.now(timezone.utc).isoformat()
 
         with self._lock:
-            self._ensure_embedding_dimension_locked(len(embedding))
             self._conn.execute(
                 """
                 INSERT INTO nodes (id, text, embedding, timestamp)
@@ -133,8 +327,6 @@ class MemoryStore:
             return {"query": query, "node_ids": [], "memories": []}
 
         query_embedding = self._embedder.embed_text(query)
-        with self._lock:
-            self._ensure_embedding_dimension_locked(len(query_embedding))
         seed_matches = self.search_similar(query_embedding, limit=1)
         if not seed_matches:
             return {"query": query, "node_ids": [], "memories": []}
@@ -256,24 +448,28 @@ class MemoryStore:
 
     def _sync_embedding_metadata(self) -> None:
         model_name = self._settings.embedding_model_name
+        dimension = str(self._embedder.dimension)
 
         with self._lock:
             stored_model_name = self._get_metadata_locked("embedding_model_name")
             stored_dimension = self._get_metadata_locked("embedding_dimension")
             is_empty = self.count_nodes() == 0
 
-            if stored_model_name is None and is_empty:
+            if stored_model_name is None and stored_dimension is None:
                 self._set_metadata_locked("embedding_model_name", model_name)
-                self._set_metadata_locked("embedding_dimension", stored_dimension or "")
+                self._set_metadata_locked("embedding_dimension", dimension)
                 self._conn.commit()
                 return
 
-            if stored_model_name == model_name:
+            if (
+                stored_model_name == model_name
+                and stored_dimension == dimension
+            ):
                 return
 
             if is_empty:
                 self._set_metadata_locked("embedding_model_name", model_name)
-                self._set_metadata_locked("embedding_dimension", stored_dimension or "")
+                self._set_metadata_locked("embedding_dimension", dimension)
                 self._conn.commit()
                 return
 
@@ -281,30 +477,6 @@ class MemoryStore:
             "The existing memory database was created with a different embedding "
             f"model ({stored_model_name}/{stored_dimension}). Start with a fresh "
             "memory.db or reuse the same model."
-        )
-
-    def _ensure_embedding_dimension_locked(self, dimension: int) -> None:
-        dimension_text = str(dimension)
-        stored_dimension = self._get_metadata_locked("embedding_dimension")
-        is_empty = self.count_nodes() == 0
-
-        if stored_dimension in {None, ""}:
-            self._set_metadata_locked("embedding_dimension", dimension_text)
-            self._conn.commit()
-            return
-
-        if stored_dimension == dimension_text:
-            return
-
-        if is_empty:
-            self._set_metadata_locked("embedding_dimension", dimension_text)
-            self._conn.commit()
-            return
-
-        raise RuntimeError(
-            "The existing memory database was created with a different embedding "
-            f"dimension ({stored_dimension}). Start with a fresh memory.db or "
-            "reuse the same embedding model."
         )
 
     def _load_graph(self) -> None:

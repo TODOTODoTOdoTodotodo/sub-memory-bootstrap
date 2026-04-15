@@ -60,3 +60,33 @@ class MemoryService:
             "compact_keep_recent_turns": self.settings.compact_keep_recent_turns,
             "node_count": self.store.count_nodes(),
         }
+
+    def get_dashboard_stats(self) -> dict[str, Any]:
+        return self.store.get_dashboard_stats()
+
+    def list_memories(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        query: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return self.store.list_memories(limit=limit, offset=offset, query=query)
+
+    def get_memory(self, node_id: str) -> dict[str, Any] | None:
+        memory = self.store.get_memory(node_id)
+        if memory is None:
+            return None
+        return {
+            **memory,
+            "connected_memories": self.store.get_connected_memories(node_id),
+        }
+
+    def get_graph_subtree(
+        self,
+        node_id: str,
+        *,
+        depth: int = 2,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        return self.store.get_graph_subtree(node_id, depth=depth, limit=limit)

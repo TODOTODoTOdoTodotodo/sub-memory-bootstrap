@@ -41,7 +41,7 @@ def build_codex_block(project_dir: Path) -> str:
         f'cwd = "{project_dir}"\n'
         'enabled_tools = ["recall_associated_memory", "store_memory", '
         '"reinforce_memory", "get_memory_status"]\n'
-        "startup_timeout_sec = 90\n"
+        "startup_timeout_sec = 30\n"
         "tool_timeout_sec = 120\n"
         f"{CONFIG_END}\n"
     )
@@ -56,9 +56,10 @@ def build_agents_block() -> str:
         "on prior project memory.\n"
         "- Use `recall_associated_memory` before answering when prior design "
         "decisions, integration history, or TODO context may matter.\n"
-        "- After each non-empty user turn, call `store_memory` with the latest user "
+        "- After each substantive turn, call `store_memory` with the latest user "
         "request and the final assistant answer or a faithful summary of it, unless "
-        "the current runtime already stores it automatically.\n"
+        "the turn is empty, purely mechanical, or the current runtime already stores "
+        "it automatically.\n"
         "- Use `reinforce_memory` after the answer when recalled memory materially "
         "influenced the final answer or code change.\n"
         "- When a multi-turn session gets long or repetitive, compact the active "
