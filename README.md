@@ -37,7 +37,38 @@ sub-memory-bootstrap으로 현재 저장소를 설치하고 웹 UI를 실행한 
 - `docs/getting-started.md`
 - `docs/usage-examples.md`
 - `docs/giyeok-manual.md`
+- `SKILL.md`
 - `skills/sub-memory-bootstrap/`
+
+## Codex Skill 설치
+
+이 저장소는 루트에도 `SKILL.md`가 있어서 저장소 루트를 그대로 Codex skill로 설치할 수 있습니다.
+
+`skill-installer`를 쓰는 경우에는 아래 둘 중 하나를 사용하면 됩니다.
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap/tree/main/skills/sub-memory-bootstrap
+```
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+```
+
+수동으로 설치하는 경우에는 저장소 루트를 `~/.codex/skills/sub-memory-bootstrap`에 복사하거나 링크하면 됩니다.
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+mkdir -p ~/.codex/skills
+cp -R sub-memory-bootstrap ~/.codex/skills/sub-memory-bootstrap
+```
+
+또는:
+
+```bash
+git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
+```
 
 ## 구성
 

@@ -136,20 +136,30 @@ Codex용 배포 저장소를 별도로 제공합니다.
 
 ### Skill 설치
 
-배포 저장소를 clone한 뒤, 전역 Codex skill 디렉터리로 복사하거나 심볼릭 링크를 겁니다.
+배포 저장소는 루트에도 `SKILL.md`가 있으므로, 저장소 루트를 그대로 전역 Codex skill 디렉터리로 복사하거나 심볼릭 링크를 걸 수 있습니다.
+
+`skill-installer`를 쓰는 경우에는 아래 둘 중 하나를 사용합니다.
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap/tree/main/skills/sub-memory-bootstrap
+```
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+```
+
+수동 설치는 아래처럼 진행합니다.
 
 ```bash
 git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
-cd sub-memory-bootstrap
 mkdir -p ~/.codex/skills
-cp -R sub-memory-bootstrap ~/.codex/skills/
+cp -R sub-memory-bootstrap ~/.codex/skills/sub-memory-bootstrap
 ```
 
 또는:
 
 ```bash
 git clone https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git
-cd sub-memory-bootstrap
 mkdir -p ~/.codex/skills
 ln -s "$(pwd)/sub-memory-bootstrap" ~/.codex/skills/sub-memory-bootstrap
 ```
