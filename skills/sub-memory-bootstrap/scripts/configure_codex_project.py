@@ -25,8 +25,35 @@ def resolve_project_dir(project_dir: Path) -> Path:
     return resolved
 
 
+def resolve_runtime_dir(project_dir: Path) -> Path:
+    return project_dir / ".codex" / "sub-memory"
+
+
+def ensure_runtime_dir(project_dir: Path) -> Path:
+    runtime_dir = resolve_runtime_dir(project_dir)
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+
+    runtime_env_path = runtime_dir / ".env"
+    if not runtime_env_path.exists():
+        project_env_path = project_dir / ".env"
+        env_example_path = project_dir / ".env.example"
+        if project_env_path.exists():
+            runtime_env_path.write_text(
+                project_env_path.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+        elif env_example_path.exists():
+            runtime_env_path.write_text(
+                env_example_path.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+    return runtime_dir
+
+
 def build_codex_block(project_dir: Path) -> str:
     mcp_entrypoint = project_dir / ".venv" / "bin" / "sub-memory-mcp"
+    runtime_dir = resolve_runtime_dir(project_dir)
     if not mcp_entrypoint.exists():
         raise RuntimeError(
             f"Expected MCP entrypoint at {mcp_entrypoint}. Run the bootstrap step first."
@@ -37,7 +64,7 @@ def build_codex_block(project_dir: Path) -> str:
         "# Managed by sub-memory-bootstrap. Re-run the skill to refresh.\n"
         "[mcp_servers.sub_memory]\n"
         f'command = "{mcp_entrypoint}"\n'
-        f'args = ["--base-dir", "{project_dir}"]\n'
+        f'args = ["--base-dir", "{runtime_dir}"]\n'
         f'cwd = "{project_dir}"\n'
         'enabled_tools = ["recall_associated_memory", "store_memory", '
         '"reinforce_memory", "get_memory_status"]\n'
@@ -158,9 +185,11 @@ def upsert_agents_md(project_dir: Path) -> Path:
 
 def configure_project(project_dir: Path) -> dict[str, Path]:
     resolved = resolve_project_dir(project_dir)
+    runtime_dir = ensure_runtime_dir(resolved)
     return {
         "config_path": upsert_codex_config(resolved),
         "agents_path": upsert_agents_md(resolved),
+        "runtime_dir": runtime_dir,
     }
 
 
@@ -178,6 +207,7 @@ def main() -> int:
     paths = configure_project(Path(args.project_dir))
     print(f"Codex project config: {paths['config_path']}")
     print(f"AGENTS rules updated: {paths['agents_path']}")
+    print(f"sub-memory base dir: {paths['runtime_dir']}")
     print("Start a new Codex session from the repository root to load both files.")
     return 0
 

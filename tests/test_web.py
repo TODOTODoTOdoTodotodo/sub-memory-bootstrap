@@ -66,7 +66,7 @@ class WebTests(unittest.TestCase):
         self.assertIn("선택 기억", graph_ui_raw)
         self.assertIn("다시 그리기", graph_ui_raw)
         self.assertIn("branch-controls", graph_ui_raw)
-        self.assertIn("펼치기", graph_ui_raw)
+        self.assertIn("접기", graph_ui_raw)
 
     def test_graph_api_exposes_parent_ids(self) -> None:
         second = self.service.store_memory("beta", "second")

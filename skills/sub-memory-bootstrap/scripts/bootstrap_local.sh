@@ -37,10 +37,13 @@ fi
 ".venv/bin/python" "$SCRIPT_DIR/configure_codex_project.py" \
   --project-dir "$PROJECT_DIR"
 
+BASE_DIR="$PROJECT_DIR/.codex/sub-memory"
+
 cat <<EOF
 Bootstrap complete.
 
 Project: $PROJECT_DIR
+sub-memory base dir: $BASE_DIR
 Agent entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-agent
 MCP entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-mcp
 Web entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-web

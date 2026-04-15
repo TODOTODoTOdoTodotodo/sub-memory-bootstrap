@@ -15,7 +15,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 cp .env.example .env
-sub-memory-web --base-dir .
+mkdir -p .codex/sub-memory
+cp .env .codex/sub-memory/.env
+sub-memory-web --base-dir .codex/sub-memory
 ```
 
 브라우저에서 직접 아래 주소를 열면 됩니다.
@@ -141,7 +143,7 @@ sub-memory-agent --once "지난번 출장 관련 TODO 기억나?"
 로컬 CLI 에이전트 연동은 `stdio` transport를 권장합니다.
 
 ```bash
-sub-memory-mcp --base-dir /absolute/path/to/sub-memory
+sub-memory-mcp --base-dir /absolute/path/to/sub-memory/.codex/sub-memory
 ```
 
 노출되는 MCP tools:
@@ -162,7 +164,9 @@ sub-memory-mcp --base-dir /absolute/path/to/sub-memory
 기본 뼈대 화면은 아래 명령으로 실행합니다.
 
 ```bash
-sub-memory-web --base-dir .
+mkdir -p .codex/sub-memory
+cp .env .codex/sub-memory/.env
+sub-memory-web --base-dir .codex/sub-memory
 ```
 
 기본 주소:
@@ -186,7 +190,7 @@ http://127.0.0.1:8765/ui
 ```toml
 [mcp_servers.sub_memory]
 command = "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp"
-args = ["--base-dir", "/absolute/path/to/sub-memory"]
+args = ["--base-dir", "/absolute/path/to/sub-memory/.codex/sub-memory"]
 cwd = "/absolute/path/to/sub-memory"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
 startup_timeout_sec = 30
@@ -200,7 +204,7 @@ tool_timeout_sec = 120
   "mcpServers": {
     "sub_memory": {
       "command": "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp",
-      "args": ["--base-dir", "/absolute/path/to/sub-memory"],
+      "args": ["--base-dir", "/absolute/path/to/sub-memory/.codex/sub-memory"],
       "cwd": "/absolute/path/to/sub-memory",
       "timeout": 30000
     }
@@ -213,7 +217,7 @@ tool_timeout_sec = 120
 ```bash
 claude mcp add --transport stdio sub-memory -- \
   /absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp \
-  --base-dir /absolute/path/to/sub-memory
+  --base-dir /absolute/path/to/sub-memory/.codex/sub-memory
 ```
 
 ## 테스트

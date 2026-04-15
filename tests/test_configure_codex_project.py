@@ -35,6 +35,7 @@ class ConfigureCodexProjectTests(unittest.TestCase):
         (self.project_dir / "requirements.txt").write_text("", encoding="utf-8")
         (self.project_dir / "pyproject.toml").write_text("", encoding="utf-8")
         (self.project_dir / "mcp_server.py").write_text("", encoding="utf-8")
+        (self.project_dir / ".env.example").write_text("OPENAI_MODEL=gpt-5-mini\n", encoding="utf-8")
         mcp_entrypoint = self.project_dir / ".venv" / "bin" / "sub-memory-mcp"
         mcp_entrypoint.parent.mkdir(parents=True, exist_ok=True)
         mcp_entrypoint.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -50,9 +51,15 @@ class ConfigureCodexProjectTests(unittest.TestCase):
 
         self.assertIn("[mcp_servers.sub_memory]", config_text)
         self.assertIn(str(self.project_dir / ".venv" / "bin" / "sub-memory-mcp"), config_text)
+        self.assertIn(
+            str(self.project_dir / ".codex" / "sub-memory"),
+            config_text,
+        )
         self.assertIn("## sub_memory MCP", agents_text)
         self.assertIn("get_memory_status", agents_text)
         self.assertIn("compact the active thread", agents_text)
+        self.assertTrue((self.project_dir / ".codex" / "sub-memory").is_dir())
+        self.assertTrue((self.project_dir / ".codex" / "sub-memory" / ".env").exists())
 
     def test_configure_project_preserves_existing_content(self) -> None:
         config_path = self.project_dir / ".codex" / "config.toml"

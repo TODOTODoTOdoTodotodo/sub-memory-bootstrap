@@ -9,6 +9,7 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
     project_dir = project_dir.resolve()
     script_dir = Path(__file__).resolve().parent
     venv_bin = project_dir / ".venv" / "bin"
+    runtime_dir = project_dir / ".codex" / "sub-memory"
     mcp_entrypoint = venv_bin / "sub-memory-mcp"
     skill_dir = project_dir / "skills" / "sub-memory-bootstrap"
     codex_config_path = project_dir / ".codex" / "config.toml"
@@ -19,6 +20,7 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
 
     return {
         "project_dir": str(project_dir),
+        "runtime_dir": str(runtime_dir),
         "mcp_entrypoint": str(mcp_entrypoint),
         "web_entrypoint": str(web_entrypoint),
         "web_start_script": str(web_start_script),
@@ -31,6 +33,7 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
 
 def build_output(paths: dict[str, str]) -> str:
     project_dir = paths["project_dir"]
+    runtime_dir = paths["runtime_dir"]
     mcp_entrypoint = paths["mcp_entrypoint"]
     web_entrypoint = paths["web_entrypoint"]
     web_start_script = paths["web_start_script"]
@@ -57,7 +60,7 @@ This writes:
 ```toml
 [mcp_servers.sub_memory]
 command = "{mcp_entrypoint}"
-args = ["--base-dir", "{project_dir}"]
+args = ["--base-dir", "{runtime_dir}"]
 cwd = "{project_dir}"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
 startup_timeout_sec = 90
@@ -71,7 +74,7 @@ tool_timeout_sec = 120
   "mcpServers": {{
     "sub_memory": {{
       "command": "{mcp_entrypoint}",
-      "args": ["--base-dir", "{project_dir}"],
+      "args": ["--base-dir", "{runtime_dir}"],
       "cwd": "{project_dir}",
       "timeout": 30000
     }}
@@ -84,7 +87,7 @@ tool_timeout_sec = 120
 ```bash
 claude mcp add --transport stdio sub-memory -- \\
   {mcp_entrypoint} \\
-  --base-dir {project_dir}
+  --base-dir {runtime_dir}
 ```
 
 ## Codex skill install
@@ -111,7 +114,7 @@ Start a new Codex session from `{project_dir}` so the project-scoped MCP config 
 Direct entrypoint:
 
 ```bash
-{web_entrypoint} --base-dir {project_dir} --host 127.0.0.1 --port 8765
+{web_entrypoint} --base-dir {runtime_dir} --host 127.0.0.1 --port 8765
 ```
 
 Helper script:
