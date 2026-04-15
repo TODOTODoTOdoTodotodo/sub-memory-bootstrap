@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sqlite3
 import tempfile
 import unittest
 
@@ -124,3 +125,43 @@ class MemoryStoreTests(unittest.TestCase):
         self.assertIsNone(self.store.get_memory(second["node_id"]))
         self.assertIsNotNone(self.store.get_memory(first["node_id"]))
         self.assertIsNotNone(self.store.get_memory(third["node_id"]))
+
+    def test_store_memory_ignores_stale_last_node_id_after_db_replacement(self) -> None:
+        self.store._last_node_id = "missing-node-id"
+        result = self.store.store_memory("alpha", "first")
+
+        self.assertEqual(result["status"], "stored")
+        self.assertEqual(self.store.count_nodes(), 1)
+        self.assertEqual(self.store.count_edges(), 0)
+
+    def test_graph_query_reloads_after_external_db_restore(self) -> None:
+        with sqlite3.connect(self.settings.db_path) as conn:
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute(
+                """
+                INSERT INTO nodes (id, text, embedding, timestamp)
+                VALUES (?, ?, ?, ?)
+                """,
+                ("node-a", "User: alpha\nAssistant: first", b"\x00" * 16, "2026-04-15T00:00:00+00:00"),
+            )
+            conn.execute(
+                """
+                INSERT INTO nodes (id, text, embedding, timestamp)
+                VALUES (?, ?, ?, ?)
+                """,
+                ("node-b", "User: beta\nAssistant: second", b"\x00" * 16, "2026-04-15T00:01:00+00:00"),
+            )
+            conn.execute(
+                """
+                INSERT INTO edges (source_id, target_id, weight)
+                VALUES (?, ?, ?)
+                """,
+                ("node-a", "node-b", 1.0),
+            )
+            conn.commit()
+
+        graph = self.store.get_graph_subtree("node-b", depth=2, limit=10)
+
+        self.assertEqual(graph["center_node_id"], "node-b")
+        self.assertEqual(len(graph["nodes"]), 2)
+        self.assertEqual(len(graph["edges"]), 1)

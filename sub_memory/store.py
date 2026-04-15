@@ -190,6 +190,7 @@ class MemoryStore:
         limit: int = 20,
     ) -> dict[str, Any]:
         with self._lock:
+            self._ensure_graph_contains_locked(node_id)
             ordered_node_ids, depth_by_node, parent_by_node = self._weighted_bfs_locked(
                 node_id,
                 depth=depth,
@@ -303,13 +304,20 @@ class MemoryStore:
             self._graph.add_node(node_id, text=memory_text, timestamp=timestamp)
 
             previous_node_id = self._last_node_id
-            if previous_node_id is not None and previous_node_id != node_id:
+            # This object is responsible for tolerating runtime DB replacement without linking to stale node ids.
+            if (
+                previous_node_id is not None
+                and previous_node_id != node_id
+                and self._node_exists_locked(previous_node_id)
+            ):
                 self._upsert_edge_locked(
                     previous_node_id,
                     node_id,
                     create_weight=1.0,
                     increment=0.0,
                 )
+            elif previous_node_id is not None and previous_node_id != node_id:
+                self._graph.remove_nodes_from([previous_node_id])
 
             self._last_node_id = node_id
 
@@ -557,6 +565,15 @@ class MemoryStore:
                     weight=float(row["weight"]),
                 )
 
+    def _ensure_graph_contains_locked(self, node_id: str) -> None:
+        if node_id in self._graph:
+            return
+
+        if not self._node_exists_locked(node_id):
+            return
+
+        self._load_graph()
+
     def _load_sqlite_vec(self) -> None:
         load_errors: list[str] = []
         self._conn.enable_load_extension(True)
@@ -720,3 +737,14 @@ class MemoryStore:
             """,
             (key, value),
         )
+
+    def _node_exists_locked(self, node_id: str) -> bool:
+        row = self._conn.execute(
+            """
+            SELECT 1
+            FROM nodes
+            WHERE id = ?
+            """,
+            (node_id,),
+        ).fetchone()
+        return row is not None
