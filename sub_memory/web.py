@@ -534,6 +534,31 @@ def _graph_page(node_id: str) -> bytes:
       return preview || '기억 내용이 비어 있습니다.';
     }}
 
+    function buildLines(text, maxChars = 18, maxLines = 3) {{
+      const words = String(text || '').replaceAll(/\\s+/g, ' ').trim().split(' ').filter(Boolean);
+      if (!words.length) return ['기억 없음'];
+      const lines = [];
+      let current = '';
+      for (const word of words) {{
+        const candidate = current ? `${{current}} ${{word}}` : word;
+        if (candidate.length <= maxChars || !current) {{
+          current = candidate;
+          continue;
+        }}
+        lines.push(current);
+        current = word;
+        if (lines.length >= maxLines - 1) break;
+      }}
+      if (current && lines.length < maxLines) {{
+        lines.push(current);
+      }}
+      const remaining = words.slice(lines.join(' ').split(' ').filter(Boolean).length).join(' ');
+      if (remaining) {{
+        lines[lines.length - 1] = truncate(`${{lines[lines.length - 1]}} ${{remaining}}`, maxChars);
+      }}
+      return lines.slice(0, maxLines);
+    }}
+
     function updateDetail(node, branchSize = 0) {{
       if (!node) {{
         detail.innerHTML = '노드를 선택하면 여기에서 기억 내용을 더 자세히 볼 수 있습니다.';
@@ -552,8 +577,9 @@ def _graph_page(node_id: str) -> bytes:
       const height = 760;
       const centerX = width / 2;
       const centerY = height / 2;
-      const columnGap = 230;
-      const rowGap = 88;
+      const rootGap = 250;
+      const columnGap = 190;
+      const rowGap = 92;
       const positions = new Map();
       const byId = new Map(nodes.map(node => [node.node_id, node]));
       const childrenByParent = new Map();
@@ -594,12 +620,13 @@ def _graph_page(node_id: str) -> bytes:
         function place(node, anchorX, rootId) {{
           const children = childrenByParent.get(node.node_id) || [];
           const leafCount = countLeaves(node.node_id);
-          const branchHeight = leafCount * rowGap;
-          const nodeY = cursorY + branchHeight / 2;
-          const nodeX = anchorX + (node.depth - 1) * columnGap * side;
-          positions.set(node.node_id, {{ x: nodeX, y: nodeY }});
+          const branchHeight = Math.max(rowGap, leafCount * rowGap);
+          const nodeY = cursorY + branchHeight / 2 - rowGap / 2;
+          const nodeX = anchorX + Math.max(0, node.depth - 1) * columnGap * side;
+          positions.set(node.node_id, {{ x: nodeX, y: nodeY, side }});
           branchSizes.set(node.node_id, leafCount);
           node.branch_root_id = rootId;
+          node.side = side;
 
           if (!children.length) {{
             cursorY += rowGap;
@@ -613,8 +640,8 @@ def _graph_page(node_id: str) -> bytes:
         }}
 
         branchNodes.forEach((branchRoot) => {{
-          place(branchRoot, centerX + side * 190, branchRoot.node_id);
-          cursorY += rowGap * 0.35;
+          place(branchRoot, centerX + side * rootGap, branchRoot.node_id);
+          cursorY += rowGap * 0.45;
         }});
 
         return branchSizes;
@@ -638,6 +665,7 @@ def _graph_page(node_id: str) -> bytes:
       const centerNode = byId.get(centerId);
       if (centerNode) {{
         centerNode.branch_root_id = centerId;
+        centerNode.side = 0;
       }}
       return {{ positions, byId, branchSizes, rootCount: rootChildren.length, rootChildren }};
     }}
@@ -746,6 +774,33 @@ def _graph_page(node_id: str) -> bytes:
         }})
         .join('');
 
+      function boxMetrics(node) {{
+        const isCenter = node.node_id === center.node_id;
+        const isDirect = node.depth === 1;
+        if (isCenter) {{
+          return {{ width: 280, height: 108, radius: 26 }};
+        }}
+        if (isDirect) {{
+          return {{ width: 230, height: 92, radius: 22 }};
+        }}
+        return {{ width: 210, height: 78, radius: 18 }};
+      }}
+
+      function connectionPath(parentNode, childNode) {{
+        const parentPos = positions.get(parentNode.node_id);
+        const childPos = positions.get(childNode.node_id);
+        if (!parentPos || !childPos) return '';
+        const parentBox = boxMetrics(parentNode);
+        const childBox = boxMetrics(childNode);
+        const direction = childPos.side || childNode.side || 1;
+        const fromX = parentPos.x + (direction >= 0 ? parentBox.width / 2 : -parentBox.width / 2);
+        const fromY = parentPos.y;
+        const toX = childPos.x + (direction >= 0 ? -childBox.width / 2 : childBox.width / 2);
+        const toY = childPos.y;
+        const elbowX = fromX + (toX - fromX) * 0.45;
+        return `M ${{fromX}} ${{fromY}} L ${{elbowX}} ${{fromY}} L ${{elbowX}} ${{toY}} L ${{toX}} ${{toY}}`;
+      }}
+
       const nodeMarkup = visible
         .map((node) => {{
           const pos = positions.get(node.node_id);
@@ -754,27 +809,47 @@ def _graph_page(node_id: str) -> bytes:
           const isDirect = node.depth === 1;
           const isSelected = node.node_id === selectedNode.node_id;
           const isOnSelectedPath = isAncestor(node.node_id, selectedNode.node_id, layout.byId);
-          const boxWidth = isCenter ? 244 : (isDirect ? 214 : 190);
-          const boxHeight = isCenter ? 82 : 72;
+          const side = pos.side || node.side || 1;
+          const box = boxMetrics(node);
+          const boxWidth = box.width;
+          const boxHeight = box.height;
           const x = pos.x - boxWidth / 2;
           const y = pos.y - boxHeight / 2;
           const fill = isSelected ? '#5f4728' : (isCenter ? '#7a5f36' : (isDirect ? '#e8d1a2' : '#fbf7ef'));
           const stroke = isSelected ? '#33230f' : (isOnSelectedPath ? '#8a6838' : (isCenter ? '#5b4526' : (isDirect ? '#b48847' : '#d7c4a0')));
-          const title = escapeHtml(truncate(node.text, isCenter ? 56 : 42));
+          const lines = buildLines(node.text, isCenter ? 22 : (isDirect ? 18 : 16), isCenter ? 3 : 2);
           const meta = isCenter ? '중심 기억' : (collapsedRoots.has(node.node_id) ? `depth ${{node.depth}} · 접힘` : `depth ${{node.depth}}`);
           const textColor = (isCenter || isSelected) ? '#fffdf8' : '#2b2419';
+          const branchTone = isCenter ? '#f5e7cb' : (side < 0 ? '#c48f4a' : '#8c6942');
+          const lineMarkup = lines.map((line, index) => {{
+            const startY = y + (isCenter ? 52 : 48);
+            return `<tspan x="${{pos.x}}" dy="${{index === 0 ? 0 : 16}}">${{escapeHtml(line)}}</tspan>`;
+          }}).join('');
           return `
             <g class="graph-node" data-node-id="${{node.node_id}}" style="cursor:pointer;">
-              <rect x="${{x}}" y="${{y}}" width="${{boxWidth}}" height="${{boxHeight}}" rx="20" fill="${{fill}}" stroke="${{stroke}}" stroke-width="${{isSelected ? 3 : (isCenter ? 2.4 : 1.4)}}"></rect>
-              <text x="${{pos.x}}" y="${{y + 28}}" text-anchor="middle" font-size="12" fill="${{textColor}}" opacity="0.82">${{escapeHtml(meta)}}</text>
-              <text x="${{pos.x}}" y="${{y + 50}}" text-anchor="middle" font-size="${{isCenter ? 16 : 14}}" font-weight="700" fill="${{textColor}}">${{title}}</text>
+              <rect x="${{x}}" y="${{y}}" width="${{boxWidth}}" height="${{boxHeight}}" rx="${{box.radius}}" fill="${{fill}}" stroke="${{stroke}}" stroke-width="${{isSelected ? 3 : (isCenter ? 2.6 : 1.5)}}"></rect>
+              <rect x="${{x + (side < 0 ? boxWidth - 8 : 0)}}" y="${{y + 10}}" width="8" height="${{boxHeight - 20}}" rx="6" fill="${{branchTone}}" opacity="0.95"></rect>
+              <text x="${{pos.x}}" y="${{y + 26}}" text-anchor="middle" font-size="12" fill="${{textColor}}" opacity="0.82">${{escapeHtml(meta)}}</text>
+              <text x="${{pos.x}}" y="${{y + (isCenter ? 52 : 48)}}" text-anchor="middle" font-size="${{isCenter ? 16 : 14}}" font-weight="700" fill="${{textColor}}">${{lineMarkup}}</text>
               <title>${{escapeHtml(summarize(node.text))}}</title>
             </g>
           `;
         }})
         .join('');
 
-      svg.innerHTML = `<rect x="0" y="0" width="1240" height="760" fill="#fffdf8"></rect>${{secondaryLines}}${{treeLines}}${{nodeMarkup}}`;
+      const primaryTreeLines = visible
+        .filter((node) => node.parent_id && visibleIds.has(node.parent_id))
+        .map((node) => {{
+          const parentNode = layout.byId.get(node.parent_id);
+          if (!parentNode) return '';
+          const edge = edgeMap.get([node.parent_id, node.node_id].sort().join('::'));
+          const baseWidth = Math.min(8, 2 + (edge?.weight || 0) * 1.3);
+          const highlighted = selectedNode.node_id === node.node_id || selectedNode.node_id === node.parent_id || isAncestor(node.node_id, selectedNode.node_id, layout.byId) || isAncestor(node.parent_id, selectedNode.node_id, layout.byId);
+          return `<path d="${{connectionPath(parentNode, node)}}" stroke="${{highlighted ? '#6b4e2c' : '#b98f57'}}" stroke-width="${{highlighted ? baseWidth + 1.2 : baseWidth}}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="${{highlighted ? '1' : '0.95'}}" />`;
+        }})
+        .join('');
+
+      svg.innerHTML = `<rect x="0" y="0" width="1240" height="760" fill="#fffdf8"></rect>${{secondaryLines}}${{primaryTreeLines}}${{nodeMarkup}}`;
       updateDetail(selectedNode, layout.branchSizes.get(selectedNode.node_id) || 0);
       svg.querySelectorAll('.graph-node').forEach((element) => {{
         element.addEventListener('click', () => {{
