@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 try:
     import sqlite_vec  # noqa: F401
@@ -42,7 +42,7 @@ class WebTests(unittest.TestCase):
             metrics_retention_days=30,
         )
         self.service = MemoryService.from_settings(self.settings, embedder=FakeEmbedder())
-        self.service.store_memory("alpha", "first")
+        self.first = self.service.store_memory("alpha", "first")
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), build_handler(self.service))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -61,6 +61,18 @@ class WebTests(unittest.TestCase):
 
         ui_raw = urlopen(base_url + "/ui").read().decode("utf-8")
         self.assertIn("[ㄱ] 기억 시각화", ui_raw)
+
+    def test_neuralizer_route_deletes_memory(self) -> None:
+        base_url = f"http://127.0.0.1:{self.server.server_port}"
+        request = Request(
+            base_url + f"/api/neuralize/{self.first['node_id']}",
+            method="POST",
+        )
+        raw = urlopen(request).read().decode("utf-8")
+        self.assertIn('"status": "deleted"', raw)
+
+        status_raw = urlopen(base_url + "/api/status").read().decode("utf-8")
+        self.assertIn('"node_count": 0', status_raw)
 
 
 if __name__ == "__main__":

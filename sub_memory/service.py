@@ -50,6 +50,9 @@ class MemoryService:
     def reinforce_memory(self, node_ids: list[str]) -> dict[str, Any]:
         return self.store.reinforce_memory(node_ids=node_ids)
 
+    def delete_memory(self, node_id: str) -> dict[str, Any]:
+        return self.store.delete_memory(node_id)
+
     def get_status(self) -> dict[str, Any]:
         return {
             "db_path": str(self.settings.db_path),

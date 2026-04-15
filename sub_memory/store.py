@@ -318,6 +318,51 @@ class MemoryStore:
             "timestamp": timestamp,
         }
 
+    def delete_memory(self, node_id: str) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                """
+                SELECT id, text, timestamp
+                FROM nodes
+                WHERE id = ?
+                """,
+                (node_id,),
+            ).fetchone()
+            if row is None:
+                return {"status": "not_found", "node_id": node_id}
+
+            connection_count = int(self._graph.degree(node_id)) if node_id in self._graph else 0
+
+            self._conn.execute(
+                """
+                DELETE FROM nodes
+                WHERE id = ?
+                """,
+                (node_id,),
+            )
+            self._conn.commit()
+
+            if node_id in self._graph:
+                self._graph.remove_node(node_id)
+
+            if self._last_node_id == node_id:
+                last_row = self._conn.execute(
+                    """
+                    SELECT id
+                    FROM nodes
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
+                self._last_node_id = str(last_row["id"]) if last_row else None
+
+        return {
+            "status": "deleted",
+            "node_id": node_id,
+            "timestamp": row["timestamp"],
+            "deleted_connection_count": connection_count,
+        }
+
     def recall_associated_memory(
         self,
         query: str,

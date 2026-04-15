@@ -178,6 +178,23 @@ def build_handler(service: MemoryService) -> type[BaseHTTPRequestHandler]:
 
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            path = parsed.path
+
+            if path.startswith("/api/neuralize/"):
+                node_id = path.rsplit("/", 1)[-1]
+                result = service.delete_memory(node_id)
+                status = (
+                    HTTPStatus.OK
+                    if result.get("status") == "deleted"
+                    else HTTPStatus.NOT_FOUND
+                )
+                self._send_json(result, status=status)
+                return
+
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
             return
 
@@ -188,9 +205,14 @@ def build_handler(service: MemoryService) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(content)
 
-        def _send_json(self, payload: dict[str, Any]) -> None:
+        def _send_json(
+            self,
+            payload: dict[str, Any],
+            *,
+            status: HTTPStatus = HTTPStatus.OK,
+        ) -> None:
             raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self.send_response(HTTPStatus.OK)
+            self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(raw)))
             self.end_headers()
@@ -288,7 +310,11 @@ def _memories_page() -> bytes:
 def _memory_detail_page(node_id: str) -> bytes:
     body = f"""
     <section class="card">
-      <h2>기억 상세</h2>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <h2 style="margin:0;">기억 상세</h2>
+        <button id="neuralizer-button" style="background:#5b1f25;border-color:#5b1f25;">Neuralizer</button>
+      </div>
+      <p class="muted">현재 기억 노드만 삭제합니다. 연결된 다른 기억은 남고, 이 노드와 이어진 엣지만 제거됩니다.</p>
       <div id="detail">불러오는 중...</div>
     </section>
     <section class="card" style="margin-top:16px;">
@@ -317,6 +343,18 @@ def _memory_detail_page(node_id: str) -> bytes:
           <a href="/ui/graph/${{item.node_id}}">생각나무</a>
         </div>`
       ).join('');
+    }});
+    document.getElementById('neuralizer-button').addEventListener('click', async () => {{
+      const ok = confirm('Neuralizer를 실행하면 현재 기억 노드만 삭제됩니다. 연결된 다른 기억은 남습니다. 계속할까요?');
+      if (!ok) return;
+      const response = await fetch('/api/neuralize/{node_id}', {{ method: 'POST' }});
+      const data = await response.json();
+      if (!response.ok) {{
+        alert('Neuralizer 실패: ' + (data.status || 'unknown'));
+        return;
+      }}
+      alert(`Neuralizer 완료. 제거된 연결 수: ${{data.deleted_connection_count}}`);
+      window.location.href = '/ui/memories';
     }});
     function escapeHtml(text) {{
       return text

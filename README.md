@@ -178,6 +178,9 @@ http://127.0.0.1:8765/ui
 - Memory Detail
 - Association Graph
 
+`Memory Detail` 화면에는 `Neuralizer` 버튼이 있습니다.
+이 기능은 현재 기억 노드만 삭제하고, 연결된 다른 기억은 남긴 채 해당 노드와 이어진 엣지만 제거합니다.
+
 ## Codex 예시
 
 ```toml
