@@ -6,7 +6,7 @@ PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 HOST="${SUB_MEMORY_WEB_HOST:-127.0.0.1}"
 PORT="${SUB_MEMORY_WEB_PORT:-8765}"
 WEB_BIN="$PROJECT_DIR/.venv/bin/sub-memory-web"
-BASE_DIR="${SUB_MEMORY_BASE_DIR:-$PROJECT_DIR/.codex/sub-memory}"
+BASE_DIR="${SUB_MEMORY_BASE_DIR:-$HOME/.codex/sub-memory}"
 
 if [[ ! -x "$WEB_BIN" ]]; then
   echo "sub-memory-web not found at $WEB_BIN" >&2

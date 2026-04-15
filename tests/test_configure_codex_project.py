@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT_PATH = (
@@ -32,6 +34,7 @@ class ConfigureCodexProjectTests(unittest.TestCase):
         self.module = load_module()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.project_dir = Path(self.temp_dir.name)
+        self.runtime_dir = self.project_dir / "global-runtime"
         (self.project_dir / "requirements.txt").write_text("", encoding="utf-8")
         (self.project_dir / "pyproject.toml").write_text("", encoding="utf-8")
         (self.project_dir / "mcp_server.py").write_text("", encoding="utf-8")
@@ -44,22 +47,20 @@ class ConfigureCodexProjectTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_configure_project_creates_codex_config_and_agents(self) -> None:
-        paths = self.module.configure_project(self.project_dir)
+        with patch.dict(os.environ, {"SUB_MEMORY_BASE_DIR": str(self.runtime_dir)}):
+            paths = self.module.configure_project(self.project_dir)
 
         config_text = paths["config_path"].read_text(encoding="utf-8")
         agents_text = paths["agents_path"].read_text(encoding="utf-8")
 
         self.assertIn("[mcp_servers.sub_memory]", config_text)
         self.assertIn(str(self.project_dir / ".venv" / "bin" / "sub-memory-mcp"), config_text)
-        self.assertIn(
-            str(self.project_dir / ".codex" / "sub-memory"),
-            config_text,
-        )
+        self.assertIn(str(self.runtime_dir.resolve()), config_text)
         self.assertIn("## sub_memory MCP", agents_text)
         self.assertIn("get_memory_status", agents_text)
         self.assertIn("compact the active thread", agents_text)
-        self.assertTrue((self.project_dir / ".codex" / "sub-memory").is_dir())
-        self.assertTrue((self.project_dir / ".codex" / "sub-memory" / ".env").exists())
+        self.assertTrue(self.runtime_dir.is_dir())
+        self.assertTrue((self.runtime_dir / ".env").exists())
 
     def test_configure_project_preserves_existing_content(self) -> None:
         config_path = self.project_dir / ".codex" / "config.toml"
@@ -75,7 +76,8 @@ class ConfigureCodexProjectTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        self.module.configure_project(self.project_dir)
+        with patch.dict(os.environ, {"SUB_MEMORY_BASE_DIR": str(self.runtime_dir)}):
+            self.module.configure_project(self.project_dir)
 
         config_text = config_path.read_text(encoding="utf-8")
         agents_text = agents_path.read_text(encoding="utf-8")

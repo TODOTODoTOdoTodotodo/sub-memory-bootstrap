@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 
@@ -26,7 +27,10 @@ def resolve_project_dir(project_dir: Path) -> Path:
 
 
 def resolve_runtime_dir(project_dir: Path) -> Path:
-    return project_dir / ".codex" / "sub-memory"
+    override = os.getenv("SUB_MEMORY_BASE_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    return (Path.home() / ".codex" / "sub-memory").resolve()
 
 
 def ensure_runtime_dir(project_dir: Path) -> Path:

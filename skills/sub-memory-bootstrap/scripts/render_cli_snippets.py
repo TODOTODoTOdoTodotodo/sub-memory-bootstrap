@@ -9,7 +9,7 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
     project_dir = project_dir.resolve()
     script_dir = Path(__file__).resolve().parent
     venv_bin = project_dir / ".venv" / "bin"
-    runtime_dir = project_dir / ".codex" / "sub-memory"
+    runtime_dir = Path.home() / ".codex" / "sub-memory"
     mcp_entrypoint = venv_bin / "sub-memory-mcp"
     skill_dir = project_dir / "skills" / "sub-memory-bootstrap"
     codex_config_path = project_dir / ".codex" / "config.toml"

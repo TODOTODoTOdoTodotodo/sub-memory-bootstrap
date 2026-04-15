@@ -37,7 +37,7 @@ fi
 ".venv/bin/python" "$SCRIPT_DIR/configure_codex_project.py" \
   --project-dir "$PROJECT_DIR"
 
-BASE_DIR="$PROJECT_DIR/.codex/sub-memory"
+BASE_DIR="${SUB_MEMORY_BASE_DIR:-$HOME/.codex/sub-memory}"
 
 cat <<EOF
 Bootstrap complete.
