@@ -82,6 +82,40 @@ class EnsureRepoCheckoutTests(unittest.TestCase):
         self.assertEqual(clone_calls[0][6], self.module.DEFAULT_REPO_URL)
         self.assertEqual(clone_calls[0][7], str(managed_repo_dir.resolve()))
 
+    def test_resolve_codex_home_ignores_jetbrains_managed_override(self) -> None:
+        jetbrains_codex_home = (
+            self.root / "Library" / "Caches" / "JetBrains" / "IntelliJIdea2025.3" / "aia" / "codex"
+        )
+
+        with patch.dict(os.environ, {"CODEX_HOME": str(jetbrains_codex_home)}):
+            with patch.object(self.module.Path, "home", return_value=self.root):
+                resolved = self.module.resolve_codex_home()
+
+        self.assertEqual(resolved, (self.root / ".codex").resolve())
+
+    def test_resolve_project_dir_prefers_user_codex_home_over_jetbrains_cache(self) -> None:
+        jetbrains_codex_home = (
+            self.root / "Library" / "Caches" / "JetBrains" / "IntelliJIdea2025.3" / "aia" / "codex"
+        )
+        script_dir = jetbrains_codex_home / "skills" / "sub-memory-bootstrap" / "scripts"
+        script_dir.mkdir(parents=True, exist_ok=True)
+        managed_repo_dir = self.root / ".codex" / "repos" / "sub-memory-bootstrap"
+        clone_calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], check: bool) -> None:
+            self.assertTrue(check)
+            clone_calls.append(cmd)
+            self.create_repo(managed_repo_dir)
+
+        with patch.dict(os.environ, {"CODEX_HOME": str(jetbrains_codex_home)}):
+            with patch.object(self.module.Path, "home", return_value=self.root):
+                with patch.object(self.module.subprocess, "run", side_effect=fake_run):
+                    resolved = self.module.resolve_project_dir(None, script_dir=script_dir)
+
+        self.assertEqual(resolved, managed_repo_dir.resolve())
+        self.assertEqual(len(clone_calls), 1)
+        self.assertEqual(clone_calls[0][7], str(managed_repo_dir.resolve()))
+
 
 if __name__ == "__main__":
     unittest.main()

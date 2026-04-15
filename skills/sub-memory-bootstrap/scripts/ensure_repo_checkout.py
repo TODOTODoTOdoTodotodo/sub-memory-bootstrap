@@ -12,6 +12,10 @@ DEFAULT_REPO_REF = "main"
 REQUIRED_FILES = ("requirements.txt", "pyproject.toml", "mcp_server.py", ".env.example")
 
 
+def default_codex_home() -> Path:
+    return (Path.home() / ".codex").resolve()
+
+
 def has_required_files(path: Path) -> bool:
     return all((path / name).exists() for name in REQUIRED_FILES)
 
@@ -29,11 +33,18 @@ def find_repo_root(start: Path) -> Path | None:
     return None
 
 
+def is_jetbrains_managed_codex_home(path: Path) -> bool:
+    parts = path.parts
+    return "JetBrains" in parts and "aia" in parts and "codex" in parts
+
+
 def resolve_codex_home() -> Path:
     override = os.getenv("CODEX_HOME")
     if override:
-        return Path(override).expanduser().resolve()
-    return (Path.home() / ".codex").resolve()
+        resolved = Path(override).expanduser().resolve()
+        if not is_jetbrains_managed_codex_home(resolved):
+            return resolved
+    return default_codex_home()
 
 
 def default_repo_dir(codex_home: Path) -> Path:
