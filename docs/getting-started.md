@@ -290,13 +290,13 @@ Skill 실행이 끝나면 아래 두 파일이 준비됩니다.
 
 ```text
 $skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
-sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 에 공용 sub-memory MCP를 신규 설치해줘. 세션별 stdio가 아니라 shared MCP daemon 방식으로 맞추고, project-local Codex 설정까지 반영해줘.
+sub-memory-bootstrap으로 <project-dir> 에 공용 sub-memory MCP를 신규 설치해줘. 세션별 stdio가 아니라 shared MCP daemon 방식으로 맞추고, project-local Codex 설정까지 반영해줘.
 ```
 
 업데이트:
 
 ```text
-sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
+sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
 ```
 
 ## 9. 다음 문서

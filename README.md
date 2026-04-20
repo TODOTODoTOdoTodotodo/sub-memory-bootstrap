@@ -63,13 +63,13 @@ skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
 
 ```text
 $skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
-sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 에 공용 sub-memory MCP를 신규 설치해줘. shared MCP daemon 방식으로 맞추고, project-local Codex 설정까지 반영한 뒤 새 세션이 어떤 URL을 보게 되는지 알려줘.
+sub-memory-bootstrap으로 <project-dir> 에 공용 sub-memory MCP를 신규 설치해줘. shared MCP daemon 방식으로 맞추고, project-local Codex 설정까지 반영한 뒤 새 세션이 어떤 URL을 보게 되는지 알려줘.
 ```
 
 업데이트:
 
 ```text
-sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 의 공용 sub-memory MCP 설정을 업데이트해줘. 설치된 의존성과 project-local Codex 설정을 다시 맞추고, shared MCP daemon 을 restart 해줘.
+sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 설치된 의존성과 project-local Codex 설정을 다시 맞추고, shared MCP daemon 을 restart 해줘.
 ```
 
 브라우저와 MCP endpoint는 아래를 사용합니다.
