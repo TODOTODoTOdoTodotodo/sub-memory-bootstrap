@@ -28,6 +28,12 @@ skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"
 - Codex MCP 연결: `python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"` 후 새 Codex 세션 시작
 - Web UI 실행: `skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"`
 
+중요:
+
+- 공용 MCP 서버를 쓰지 않고 세션마다 `sub-memory-mcp`를 직접 띄우면, 각 세션이 임베딩 모델과 메모리 서비스를 별도로 적재합니다.
+- 이 방식은 같은 `memory.db`를 보더라도 세션 수만큼 메모리를 더 사용하고, 락/초기화 비용도 커질 수 있습니다.
+- 따라서 기본 운영 방식은 공용 MCP 데몬 1개를 띄우고 모든 세션이 같은 `http://127.0.0.1:8766/mcp`를 바라보는 것입니다.
+
 브라우저와 MCP endpoint는 아래를 사용합니다.
 
 ```text

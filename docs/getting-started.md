@@ -95,6 +95,13 @@ skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh stop "$(pwd)"
 http://127.0.0.1:8766/mcp
 ```
 
+주의:
+
+- 세션마다 `sub-memory-mcp`를 별도로 실행하는 방식은 권장하지 않습니다.
+- 그렇게 하면 각 세션이 임베딩 모델과 메모리 서비스를 중복 적재하므로 메모리 사용량이 빠르게 늘어날 수 있습니다.
+- 또한 동일한 `memory.db`에 대해 락 경합과 초기화 지연이 더 자주 발생할 수 있습니다.
+- 운영 기준은 공용 MCP 데몬 1개를 유지하고, 모든 세션이 동일한 URL에 연결하는 것입니다.
+
 `sub-memory-agent`는 별도로 최근 세션 턴을 모두 길게 유지하지 않습니다.
 대신 오래된 세션 내용을 짧은 working summary로 compact하고, 최근 몇 턴과 `memory.db` recall을 함께 사용합니다.
 그래서 멀티턴이 길어져도 토큰 사용량을 비교적 낮게 유지할 수 있습니다.
