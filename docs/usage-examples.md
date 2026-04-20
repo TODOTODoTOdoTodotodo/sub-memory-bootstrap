@@ -125,6 +125,13 @@ Use sub-memory-bootstrap to set up this repository locally, verify the install, 
 sub-memory-bootstrap을 사용해서 이 저장소를 로컬에 설치하고, 설치 검증까지 한 뒤, 현재 머신 기준 Codex/Gemini/Claude MCP 설정 스니펫을 보여줘.
 ```
 
+공용 MCP 신규 설치형:
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 에 공용 sub-memory MCP를 신규 설치해줘. shared MCP daemon 방식으로 맞추고 project-local Codex 설정까지 반영해줘.
+```
+
 ### 예시 B: 재검증
 
 ```text
@@ -133,6 +140,12 @@ Use sub-memory-bootstrap to validate the existing installation and tell me wheth
 
 ```text
 sub-memory-bootstrap으로 기존 설치 상태를 다시 점검하고, 공용 MCP 서버가 떠 있는지와 이 저장소가 써야 할 URL을 알려줘.
+```
+
+공용 MCP 업데이트형:
+
+```text
+sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
 ```
 
 ### 예시 C: 문서화 포함

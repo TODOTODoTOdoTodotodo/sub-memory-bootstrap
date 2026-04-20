@@ -43,6 +43,8 @@ def build_output(paths: dict[str, str]) -> str:
     mcp_url = paths["mcp_url"]
     web_entrypoint = paths["web_entrypoint"]
     web_start_script = paths["web_start_script"]
+    install_script = str(Path(daemon_script).with_name("install_shared_mcp.sh"))
+    update_script = str(Path(daemon_script).with_name("update_shared_mcp.sh"))
     skill_dir = paths["skill_dir"]
     codex_config_path = paths["codex_config_path"]
     agents_path = paths["agents_path"]
@@ -51,6 +53,18 @@ def build_output(paths: dict[str, str]) -> str:
     return f"""# sub-memory local onboarding snippets
 
 ## Codex project registration
+
+First install:
+
+```bash
+{install_script} {project_dir}
+```
+
+Refresh an existing install:
+
+```bash
+{update_script} {project_dir}
+```
 
 ```bash
 python3 {configure_script} --project-dir {project_dir}

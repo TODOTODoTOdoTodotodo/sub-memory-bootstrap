@@ -68,6 +68,25 @@ python -m unittest discover -s tests
 - `sub-memory-mcp`
 - `sub-memory-web`
 
+## 3A. 신규 설치와 업데이트를 분리해서 실행하기
+
+신규 설치:
+
+```bash
+skills/sub-memory-bootstrap/scripts/install_shared_mcp.sh "$(pwd)"
+```
+
+업데이트:
+
+```bash
+skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
+```
+
+이 스크립트의 책임은 아래와 같습니다.
+
+- 신규 설치: 의존성 설치, project-local Codex 설정 생성, shared MCP daemon 기동
+- 업데이트: 현재 checkout 기준 의존성 재설치, project-local Codex 설정 재생성, shared MCP daemon 재시작
+
 ## 4. 공용 MCP 서버 시작
 
 권장 방식은 공용 `streamable-http` MCP 데몬을 한 번 띄우고, 각 세션은 같은 URL을 바라보게 하는 것입니다.
@@ -255,6 +274,21 @@ Skill 실행이 끝나면 아래 두 파일이 준비됩니다.
 - 새 세션용 사용 규칙: `AGENTS.md`
 
 따라서 `sub-memory-bootstrap`으로 온보딩한 뒤에는 저장소 루트에서 새 Codex 세션을 시작하는 것이 가장 안정적입니다.
+
+### 자연어 요청 예시
+
+신규 설치:
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 에 공용 sub-memory MCP를 신규 설치해줘. 세션별 stdio가 아니라 shared MCP daemon 방식으로 맞추고, project-local Codex 설정까지 반영해줘.
+```
+
+업데이트:
+
+```text
+sub-memory-bootstrap으로 /Users/HH191_1/Documents/smb 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
+```
 
 ## 9. 다음 문서
 
