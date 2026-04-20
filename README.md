@@ -9,32 +9,31 @@
 
 가장 짧은 확인 경로는 아래입니다.
 
-먼저 `sub-memory-bootstrap` 스킬을 전역에 설치하거나 업데이트합니다.
+1. 먼저 `sub-memory-bootstrap` 스킬을 전역에 설치하거나 업데이트합니다.
 
 ```text
 $skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
 ```
 
-설치 직후에는 `Restart Codex to pick up new skills.`를 수행한 뒤, 이 저장소 루트에서 아래를 실행합니다.
+2. `Restart Codex to pick up new skills.`를 수행합니다.
+3. 이 저장소 루트에서 공용 MCP 설치 흐름을 실행합니다.
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-cp .env.example .env
-mkdir -p ~/.codex/sub-memory
-cp .env ~/.codex/sub-memory/.env
-python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"
-skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"
+skills/sub-memory-bootstrap/scripts/install_shared_mcp.sh "$(pwd)"
+```
+
+4. 새 Codex 세션을 이 저장소 루트에서 시작합니다.
+5. Web UI가 필요하면 아래를 실행합니다.
+
+```bash
 skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"
 ```
 
-빠른 시작에서 확인해야 할 필수 항목은 아래 셋입니다.
+빠른 시작에서 확인해야 할 필수 항목은 아래 넷입니다.
 
 - `sub-memory-bootstrap` 스킬 설치: `$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .`
-- 공용 MCP 서버 시작: `skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"`
-- Codex MCP 연결: `python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"` 후 새 Codex 세션 시작
+- 공용 MCP 설치/기동: `skills/sub-memory-bootstrap/scripts/install_shared_mcp.sh "$(pwd)"`
+- Codex MCP 연결 반영: 저장소 루트에서 새 Codex 세션 시작
 - Web UI 실행: `skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"`
 
 중요:
@@ -54,8 +53,12 @@ skills/sub-memory-bootstrap/scripts/install_shared_mcp.sh "$(pwd)"
 업데이트:
 
 ```bash
+git pull --ff-only
 skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
 ```
+
+업데이트 스크립트는 현재 checkout 기준으로 의존성 재설치, project-local Codex 설정 재생성, shared MCP daemon 재시작을 수행합니다.
+설치된 스킬 파일 자체를 갱신했다면 `Restart Codex to pick up new skills.` 후 새 세션을 시작합니다.
 
 자연어로는 아래처럼 요청하면 됩니다.
 
@@ -69,7 +72,7 @@ sub-memory-bootstrap으로 <project-dir> 에 공용 sub-memory MCP를 신규 설
 업데이트:
 
 ```text
-sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 설치된 의존성과 project-local Codex 설정을 다시 맞추고, shared MCP daemon 을 restart 해줘.
+sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 먼저 현재 checkout을 최신으로 맞추고, 설치된 의존성과 project-local Codex 설정을 다시 맞춘 뒤, shared MCP daemon 을 restart 해줘.
 ```
 
 브라우저와 MCP endpoint는 아래를 사용합니다.

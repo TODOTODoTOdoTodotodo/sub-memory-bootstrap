@@ -87,6 +87,7 @@ skills/sub-memory-bootstrap/scripts/install_shared_mcp.sh "$(pwd)"
 업데이트:
 
 ```bash
+git pull --ff-only
 skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
 ```
 
@@ -95,6 +96,7 @@ skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
 - 공통 선행 조건: `sub-memory-bootstrap` 스킬이 이미 `~/.codex/skills`에 설치되어 있어야 함
 - 신규 설치: 의존성 설치, project-local Codex 설정 생성, shared MCP daemon 기동
 - 업데이트: 현재 checkout 기준 의존성 재설치, project-local Codex 설정 재생성, shared MCP daemon 재시작
+- 둘 다 끝난 뒤에는 저장소 루트에서 새 Codex 세션을 시작하는 것이 가장 안전함
 
 ## 4. 공용 MCP 서버 시작
 
@@ -296,7 +298,7 @@ sub-memory-bootstrap으로 <project-dir> 에 공용 sub-memory MCP를 신규 설
 업데이트:
 
 ```text
-sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
+sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 먼저 현재 checkout을 최신으로 맞추고, 그 다음 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
 ```
 
 ## 9. 다음 문서

@@ -145,7 +145,7 @@ sub-memory-bootstrap으로 기존 설치 상태를 다시 점검하고, 공용 M
 공용 MCP 업데이트형:
 
 ```text
-sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 현재 checkout 기준으로 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
+sub-memory-bootstrap으로 <project-dir> 의 공용 sub-memory MCP 설정을 업데이트해줘. 먼저 현재 checkout을 최신으로 맞추고, 그 다음 의존성, project-local Codex 설정, shared MCP daemon 을 다시 맞춰줘.
 ```
 
 ### 예시 C: 문서화 포함
