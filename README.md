@@ -9,6 +9,14 @@
 
 가장 짧은 확인 경로는 아래입니다.
 
+먼저 `sub-memory-bootstrap` 스킬을 전역에 설치하거나 업데이트합니다.
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+```
+
+설치 직후에는 `Restart Codex to pick up new skills.`를 수행한 뒤, 이 저장소 루트에서 아래를 실행합니다.
+
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
@@ -24,6 +32,7 @@ skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"
 
 빠른 시작에서 확인해야 할 필수 항목은 아래 셋입니다.
 
+- `sub-memory-bootstrap` 스킬 설치: `$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .`
 - 공용 MCP 서버 시작: `skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"`
 - Codex MCP 연결: `python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"` 후 새 Codex 세션 시작
 - Web UI 실행: `skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"`

@@ -17,6 +17,14 @@
 
 프로젝트 루트에서 실행합니다.
 
+먼저 `sub-memory-bootstrap` 스킬을 전역에 설치하거나 업데이트합니다.
+
+```text
+$skill-installer https://github.com/TODOTODoTOdoTodotodo/sub-memory-bootstrap.git --path .
+```
+
+설치 직후에는 `Restart Codex to pick up new skills.`를 수행한 뒤, 이 저장소 루트에서 아래를 실행합니다.
+
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
@@ -84,6 +92,7 @@ skills/sub-memory-bootstrap/scripts/update_shared_mcp.sh "$(pwd)"
 
 이 스크립트의 책임은 아래와 같습니다.
 
+- 공통 선행 조건: `sub-memory-bootstrap` 스킬이 이미 `~/.codex/skills`에 설치되어 있어야 함
 - 신규 설치: 의존성 설치, project-local Codex 설정 생성, shared MCP daemon 기동
 - 업데이트: 현재 checkout 기준 의존성 재설치, project-local Codex 설정 재생성, shared MCP daemon 재시작
 
