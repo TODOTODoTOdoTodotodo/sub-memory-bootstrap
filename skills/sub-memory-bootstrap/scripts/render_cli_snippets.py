@@ -11,6 +11,8 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
     venv_bin = project_dir / ".venv" / "bin"
     runtime_dir = Path.home() / ".codex" / "sub-memory"
     mcp_entrypoint = venv_bin / "sub-memory-mcp"
+    daemon_script = script_dir / "manage_mcp_daemon.sh"
+    mcp_url = "http://127.0.0.1:8766/mcp"
     skill_dir = project_dir / "skills" / "sub-memory-bootstrap"
     codex_config_path = project_dir / ".codex" / "config.toml"
     agents_path = project_dir / "AGENTS.md"
@@ -22,6 +24,8 @@ def resolve_paths(project_dir: Path) -> dict[str, str]:
         "project_dir": str(project_dir),
         "runtime_dir": str(runtime_dir),
         "mcp_entrypoint": str(mcp_entrypoint),
+        "daemon_script": str(daemon_script),
+        "mcp_url": mcp_url,
         "web_entrypoint": str(web_entrypoint),
         "web_start_script": str(web_start_script),
         "skill_dir": str(skill_dir),
@@ -35,6 +39,8 @@ def build_output(paths: dict[str, str]) -> str:
     project_dir = paths["project_dir"]
     runtime_dir = paths["runtime_dir"]
     mcp_entrypoint = paths["mcp_entrypoint"]
+    daemon_script = paths["daemon_script"]
+    mcp_url = paths["mcp_url"]
     web_entrypoint = paths["web_entrypoint"]
     web_start_script = paths["web_start_script"]
     skill_dir = paths["skill_dir"]
@@ -57,11 +63,15 @@ This writes:
 
 ## Codex
 
+Start the shared MCP daemon first:
+
+```bash
+{daemon_script} start {project_dir}
+```
+
 ```toml
 [mcp_servers.sub_memory]
-command = "{mcp_entrypoint}"
-args = ["--base-dir", "{runtime_dir}"]
-cwd = "{project_dir}"
+url = "{mcp_url}"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
 startup_timeout_sec = 90
 tool_timeout_sec = 120
@@ -73,9 +83,7 @@ tool_timeout_sec = 120
 {{
   "mcpServers": {{
     "sub_memory": {{
-      "command": "{mcp_entrypoint}",
-      "args": ["--base-dir", "{runtime_dir}"],
-      "cwd": "{project_dir}",
+      "url": "{mcp_url}",
       "timeout": 30000
     }}
   }}
@@ -85,9 +93,7 @@ tool_timeout_sec = 120
 ## Claude Code
 
 ```bash
-claude mcp add --transport stdio sub-memory -- \\
-  {mcp_entrypoint} \\
-  --base-dir {runtime_dir}
+claude mcp add --transport http sub-memory {mcp_url}
 ```
 
 ## Codex skill install
@@ -110,6 +116,12 @@ Start a new Codex session from `{project_dir}` so the project-scoped MCP config 
 `AGENTS.md` instructions are loaded together.
 
 ## Web UI
+
+Shared MCP daemon status:
+
+```bash
+{daemon_script} status {project_dir}
+```
 
 Direct entrypoint:
 

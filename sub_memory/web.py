@@ -116,6 +116,18 @@ svg {
   background: #ead7b4;
   color: #3e301a;
 }
+.branch-toggle[data-depth="2"] {
+  margin-left: 10px;
+}
+.branch-toggle[data-depth="3"] {
+  margin-left: 20px;
+}
+.branch-toggle[data-depth="4"] {
+  margin-left: 30px;
+}
+.branch-toggle[data-depth="5"] {
+  margin-left: 40px;
+}
 .graph-toolbar label {
   display: flex;
   gap: 8px;
@@ -474,8 +486,10 @@ def _graph_page(node_id: str) -> bytes:
           <div class="graph-toolbar">
             <label>Depth
               <select id="depth">
-                <option value="2" selected>2</option>
+                <option value="2">2</option>
                 <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5" selected>5</option>
               </select>
             </label>
             <label>Limit
@@ -520,7 +534,7 @@ def _graph_page(node_id: str) -> bytes:
     const limitInput = document.getElementById('limit');
     const reloadButton = document.getElementById('reload-graph');
     const branchControls = document.getElementById('branch-controls');
-    let collapsedRoots = new Set();
+    let collapsedNodeIds = new Set();
     let selectedNodeId = null;
 
     function truncate(text, max = 72) {{
@@ -572,15 +586,7 @@ def _graph_page(node_id: str) -> bytes:
       `;
     }}
 
-    function computeLayout(nodes, centerId) {{
-      const width = 1240;
-      const height = 760;
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const rootGap = 250;
-      const columnGap = 190;
-      const rowGap = 92;
-      const positions = new Map();
+    function buildHierarchy(nodes) {{
       const byId = new Map(nodes.map(node => [node.node_id, node]));
       const childrenByParent = new Map();
 
@@ -598,6 +604,31 @@ def _graph_page(node_id: str) -> bytes:
           return (right.text || '').length - (left.text || '').length;
         }});
       }}
+
+      return {{ byId, childrenByParent }};
+    }}
+
+    function isHiddenByCollapsedAncestor(node, byId) {{
+      let current = node;
+      while (current && current.parent_id) {{
+        if (collapsedNodeIds.has(current.parent_id)) return true;
+        current = byId.get(current.parent_id);
+      }}
+      return false;
+    }}
+
+    function computeLayout(nodes, centerId) {{
+      const width = 1240;
+      const height = 760;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const rootGap = 250;
+      const columnGap = 190;
+      const rowGap = 92;
+      const positions = new Map();
+      const hierarchy = buildHierarchy(nodes);
+      const byId = hierarchy.byId;
+      const childrenByParent = hierarchy.childrenByParent;
 
       const rootChildren = (childrenByParent.get(centerId) || []).slice();
       rootChildren.sort((left, right) => (right.text || '').length - (left.text || '').length);
@@ -667,7 +698,7 @@ def _graph_page(node_id: str) -> bytes:
         centerNode.branch_root_id = centerId;
         centerNode.side = 0;
       }}
-      return {{ positions, byId, branchSizes, rootCount: rootChildren.length, rootChildren }};
+      return {{ positions, byId, branchSizes, rootCount: rootChildren.length, rootChildren, childrenByParent }};
     }}
 
     function isAncestor(possibleAncestorId, nodeId, byId) {{
@@ -679,33 +710,40 @@ def _graph_page(node_id: str) -> bytes:
       return false;
     }}
 
-    function visibleNodes(nodes, centerId) {{
+    function visibleNodes(nodes, centerId, byId) {{
       return nodes.filter((node) => {{
         if (node.node_id === centerId) return true;
-        const rootId = node.branch_root_id || node.node_id;
-        if (!collapsedRoots.has(rootId)) return true;
-        return node.node_id === rootId;
+        return !isHiddenByCollapsedAncestor(node, byId);
       }});
     }}
 
-    function renderBranchControls(layout) {{
-      if (!layout.rootChildren.length) {{
+    function renderBranchControls(allNodes, centerId, hierarchy) {{
+      const visible = visibleNodes(allNodes, centerId, hierarchy.byId);
+      const expandable = visible
+        .filter((node) => node.node_id !== centerId)
+        .filter((node) => (hierarchy.childrenByParent.get(node.node_id) || []).length > 0)
+        .sort((left, right) => {{
+          if (left.depth !== right.depth) return left.depth - right.depth;
+          return (left.timestamp || '').localeCompare(right.timestamp || '');
+        }});
+
+      if (!expandable.length) {{
         branchControls.innerHTML = '';
         return;
       }}
-      branchControls.innerHTML = layout.rootChildren.map((node) => {{
+      branchControls.innerHTML = expandable.map((node) => {{
         const preview = escapeHtml(truncate(node.text, 18));
-        const collapsed = collapsedRoots.has(node.node_id);
-        return `<button type="button" class="branch-toggle" data-root-id="${{node.node_id}}" data-collapsed="${{collapsed ? 'true' : 'false'}}">${{collapsed ? '펼치기' : '접기'}} · ${{preview}}</button>`;
+        const collapsed = collapsedNodeIds.has(node.node_id);
+        return `<button type="button" class="branch-toggle" data-node-id="${{node.node_id}}" data-depth="${{Math.min(node.depth || 1, 5)}}" data-collapsed="${{collapsed ? 'true' : 'false'}}">${{collapsed ? '펼치기' : '접기'}} · depth ${{node.depth}} · ${{preview}}</button>`;
       }}).join('');
       branchControls.querySelectorAll('.branch-toggle').forEach((button) => {{
         button.addEventListener('click', () => {{
-          const rootId = button.getAttribute('data-root-id');
-          if (!rootId) return;
-          if (collapsedRoots.has(rootId)) {{
-            collapsedRoots.delete(rootId);
+          const nodeId = button.getAttribute('data-node-id');
+          if (!nodeId) return;
+          if (collapsedNodeIds.has(nodeId)) {{
+            collapsedNodeIds.delete(nodeId);
           }} else {{
-            collapsedRoots.add(rootId);
+            collapsedNodeIds.add(nodeId);
           }}
           loadGraph();
         }});
@@ -721,13 +759,14 @@ def _graph_page(node_id: str) -> bytes:
       }}
 
       const center = nodes.find((node) => node.node_id === data.center_node_id) || nodes[0];
-      const layout = computeLayout(nodes, center.node_id);
-      renderBranchControls(layout);
+      const hierarchy = buildHierarchy(nodes);
+      const visible = visibleNodes(nodes, center.node_id, hierarchy.byId);
+      const layout = computeLayout(visible, center.node_id);
+      renderBranchControls(nodes, center.node_id, hierarchy);
       if (!selectedNodeId || !layout.byId.has(selectedNodeId)) {{
         selectedNodeId = center.node_id;
       }}
       const selectedNode = layout.byId.get(selectedNodeId) || center;
-      const visible = visibleNodes(nodes, center.node_id);
       const visibleIds = new Set(visible.map((node) => node.node_id));
       const positions = layout.positions;
       const edgeMap = new Map(
@@ -818,7 +857,7 @@ def _graph_page(node_id: str) -> bytes:
           const fill = isSelected ? '#5f4728' : (isCenter ? '#7a5f36' : (isDirect ? '#e8d1a2' : '#fbf7ef'));
           const stroke = isSelected ? '#33230f' : (isOnSelectedPath ? '#8a6838' : (isCenter ? '#5b4526' : (isDirect ? '#b48847' : '#d7c4a0')));
           const lines = buildLines(node.text, isCenter ? 22 : (isDirect ? 18 : 16), isCenter ? 3 : 2);
-          const meta = isCenter ? '중심 기억' : (collapsedRoots.has(node.node_id) ? `depth ${{node.depth}} · 접힘` : `depth ${{node.depth}}`);
+          const meta = isCenter ? '중심 기억' : (collapsedNodeIds.has(node.node_id) ? `depth ${{node.depth}} · 접힘` : `depth ${{node.depth}}`);
           const textColor = (isCenter || isSelected) ? '#fffdf8' : '#2b2419';
           const branchTone = isCenter ? '#f5e7cb' : (side < 0 ? '#c48f4a' : '#8c6942');
           const lineMarkup = lines.map((line, index) => {{

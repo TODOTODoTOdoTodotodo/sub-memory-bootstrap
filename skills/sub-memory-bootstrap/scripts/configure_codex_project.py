@@ -13,6 +13,9 @@ AGENTS_BEGIN = "<!-- BEGIN SUB-MEMORY MCP RULES -->"
 AGENTS_END = "<!-- END SUB-MEMORY MCP RULES -->"
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_AGENTS_TEMPLATE = SCRIPT_DIR.parent / "templates" / "AGENTS.default.md"
+DEFAULT_MCP_HOST = "127.0.0.1"
+DEFAULT_MCP_PORT = 8766
+DEFAULT_MCP_PATH = "/mcp"
 
 
 def resolve_project_dir(project_dir: Path) -> Path:
@@ -31,6 +34,32 @@ def resolve_runtime_dir(project_dir: Path) -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".codex" / "sub-memory").resolve()
+
+
+def resolve_shared_mcp_host() -> str:
+    return os.getenv("SUB_MEMORY_MCP_HOST", DEFAULT_MCP_HOST)
+
+
+def resolve_shared_mcp_port() -> int:
+    raw = os.getenv("SUB_MEMORY_MCP_PORT")
+    if raw is None:
+        return DEFAULT_MCP_PORT
+    try:
+        return int(raw)
+    except ValueError:
+        return DEFAULT_MCP_PORT
+
+
+def resolve_shared_mcp_path() -> str:
+    raw = os.getenv("SUB_MEMORY_MCP_PATH", DEFAULT_MCP_PATH).strip() or DEFAULT_MCP_PATH
+    return raw if raw.startswith("/") else f"/{raw}"
+
+
+def resolve_shared_mcp_url() -> str:
+    return (
+        f"http://{resolve_shared_mcp_host()}:{resolve_shared_mcp_port()}"
+        f"{resolve_shared_mcp_path()}"
+    )
 
 
 def ensure_runtime_dir(project_dir: Path) -> Path:
@@ -56,20 +85,11 @@ def ensure_runtime_dir(project_dir: Path) -> Path:
 
 
 def build_codex_block(project_dir: Path) -> str:
-    mcp_entrypoint = project_dir / ".venv" / "bin" / "sub-memory-mcp"
-    runtime_dir = resolve_runtime_dir(project_dir)
-    if not mcp_entrypoint.exists():
-        raise RuntimeError(
-            f"Expected MCP entrypoint at {mcp_entrypoint}. Run the bootstrap step first."
-        )
-
     return (
         f"{CONFIG_BEGIN}\n"
         "# Managed by sub-memory-bootstrap. Re-run the skill to refresh.\n"
         "[mcp_servers.sub_memory]\n"
-        f'command = "{mcp_entrypoint}"\n'
-        f'args = ["--base-dir", "{runtime_dir}"]\n'
-        f'cwd = "{project_dir}"\n'
+        f'url = "{resolve_shared_mcp_url()}"\n'
         'enabled_tools = ["recall_associated_memory", "store_memory", '
         '"reinforce_memory", "get_memory_status"]\n'
         "startup_timeout_sec = 30\n"
@@ -212,6 +232,7 @@ def main() -> int:
     print(f"Codex project config: {paths['config_path']}")
     print(f"AGENTS rules updated: {paths['agents_path']}")
     print(f"sub-memory base dir: {paths['runtime_dir']}")
+    print(f"sub-memory MCP URL: {resolve_shared_mcp_url()}")
     print("Start a new Codex session from the repository root to load both files.")
     return 0
 

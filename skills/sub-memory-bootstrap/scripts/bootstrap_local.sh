@@ -32,8 +32,16 @@ fi
 
 ".venv/bin/python" "$SCRIPT_DIR/configure_codex_project.py" \
   --project-dir "$PROJECT_DIR"
+"$SCRIPT_DIR/manage_mcp_daemon.sh" restart "$PROJECT_DIR"
 
 BASE_DIR="${SUB_MEMORY_BASE_DIR:-$HOME/.codex/sub-memory}"
+MCP_HOST="${SUB_MEMORY_MCP_HOST:-127.0.0.1}"
+MCP_PORT="${SUB_MEMORY_MCP_PORT:-8766}"
+MCP_PATH="${SUB_MEMORY_MCP_PATH:-/mcp}"
+
+if [[ "$MCP_PATH" != /* ]]; then
+  MCP_PATH="/$MCP_PATH"
+fi
 
 cat <<EOF
 Bootstrap complete.
@@ -42,6 +50,8 @@ Project: $PROJECT_DIR
 sub-memory base dir: $BASE_DIR
 Agent entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-agent
 MCP entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-mcp
+Shared MCP daemon: $PROJECT_DIR/skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh
+Shared MCP URL: http://$MCP_HOST:$MCP_PORT$MCP_PATH
 Web entrypoint: $PROJECT_DIR/.venv/bin/sub-memory-web
 Codex project config: $PROJECT_DIR/.codex/config.toml
 AGENTS rules: $PROJECT_DIR/AGENTS.md
@@ -49,6 +59,7 @@ AGENTS rules: $PROJECT_DIR/AGENTS.md
 Next recommended checks:
   $PROJECT_DIR/.venv/bin/sub-memory-agent --help
   $PROJECT_DIR/.venv/bin/sub-memory-mcp --help
+  $PROJECT_DIR/skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh status $PROJECT_DIR
   $PROJECT_DIR/.venv/bin/sub-memory-web --help
   $PROJECT_DIR/.venv/bin/python -m unittest discover -s tests
   Start a new Codex session from $PROJECT_DIR

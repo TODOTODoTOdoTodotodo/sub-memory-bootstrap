@@ -17,12 +17,21 @@ pip install -e .
 cp .env.example .env
 mkdir -p ~/.codex/sub-memory
 cp .env ~/.codex/sub-memory/.env
-sub-memory-web --base-dir ~/.codex/sub-memory
+python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"
+skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"
+skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"
 ```
 
-브라우저에서 직접 아래 주소를 열면 됩니다.
+빠른 시작에서 확인해야 할 필수 항목은 아래 셋입니다.
+
+- 공용 MCP 서버 시작: `skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"`
+- Codex MCP 연결: `python3 skills/sub-memory-bootstrap/scripts/configure_codex_project.py --project-dir "$(pwd)"` 후 새 Codex 세션 시작
+- Web UI 실행: `skills/sub-memory-bootstrap/scripts/start_web_ui.sh "$(pwd)"`
+
+브라우저와 MCP endpoint는 아래를 사용합니다.
 
 ```text
+MCP: http://127.0.0.1:8766/mcp
 http://127.0.0.1:8765/ui
 ```
 
@@ -176,10 +185,24 @@ sub-memory-agent --once "지난번 출장 관련 TODO 기억나?"
 
 ## MCP 서버
 
-로컬 CLI 에이전트 연동은 `stdio` transport를 권장합니다.
+권장 방식은 `~/.codex/sub-memory`를 기준으로 공용 MCP 데몬을 한 번 띄우고,
+각 세션은 동일한 `streamable-http` endpoint를 바라보게 하는 것입니다.
 
 ```bash
-sub-memory-mcp --base-dir ~/.codex/sub-memory
+skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh start "$(pwd)"
+```
+
+상태 확인과 종료:
+
+```bash
+skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh status "$(pwd)"
+skills/sub-memory-bootstrap/scripts/manage_mcp_daemon.sh stop "$(pwd)"
+```
+
+기본 endpoint:
+
+```text
+http://127.0.0.1:8766/mcp
 ```
 
 노출되는 MCP tools:
@@ -225,9 +248,7 @@ http://127.0.0.1:8765/ui
 
 ```toml
 [mcp_servers.sub_memory]
-command = "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp"
-args = ["--base-dir", "~/.codex/sub-memory"]
-cwd = "/absolute/path/to/sub-memory"
+url = "http://127.0.0.1:8766/mcp"
 enabled_tools = ["recall_associated_memory", "store_memory", "reinforce_memory", "get_memory_status"]
 startup_timeout_sec = 30
 tool_timeout_sec = 120
@@ -239,9 +260,7 @@ tool_timeout_sec = 120
 {
   "mcpServers": {
     "sub_memory": {
-      "command": "/absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp",
-      "args": ["--base-dir", "~/.codex/sub-memory"],
-      "cwd": "/absolute/path/to/sub-memory",
+      "url": "http://127.0.0.1:8766/mcp",
       "timeout": 30000
     }
   }
@@ -251,9 +270,7 @@ tool_timeout_sec = 120
 ## Claude Code 예시
 
 ```bash
-claude mcp add --transport stdio sub-memory -- \
-  /absolute/path/to/sub-memory/.venv/bin/sub-memory-mcp \
-  --base-dir ~/.codex/sub-memory
+claude mcp add --transport http sub-memory http://127.0.0.1:8766/mcp
 ```
 
 ## 테스트

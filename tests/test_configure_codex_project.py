@@ -54,20 +54,20 @@ class ConfigureCodexProjectTests(unittest.TestCase):
         agents_text = paths["agents_path"].read_text(encoding="utf-8")
 
         self.assertIn("[mcp_servers.sub_memory]", config_text)
-        self.assertIn(str(self.project_dir / ".venv" / "bin" / "sub-memory-mcp"), config_text)
-        self.assertIn(str(self.runtime_dir.resolve()), config_text)
+        self.assertIn('url = "http://127.0.0.1:8766/mcp"', config_text)
         self.assertIn("## sub_memory MCP", agents_text)
         self.assertIn("get_memory_status", agents_text)
         self.assertIn("compact the active thread", agents_text)
         self.assertTrue(self.runtime_dir.is_dir())
         self.assertTrue((self.runtime_dir / ".env").exists())
+        self.assertEqual(paths["runtime_dir"], self.runtime_dir.resolve())
 
     def test_configure_project_preserves_existing_content(self) -> None:
         config_path = self.project_dir / ".codex" / "config.toml"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(
             '[profiles.default]\nmodel = "gpt-5"\n\n'
-            '[mcp_servers.sub_memory]\ncommand = "/tmp/old"\n',
+            '[mcp_servers.sub_memory]\nurl = "http://127.0.0.1:9000/mcp"\n',
             encoding="utf-8",
         )
         agents_path = self.project_dir / "AGENTS.md"
@@ -84,6 +84,7 @@ class ConfigureCodexProjectTests(unittest.TestCase):
 
         self.assertIn('[profiles.default]\nmodel = "gpt-5"', config_text)
         self.assertEqual(config_text.count("[mcp_servers.sub_memory]"), 1)
+        self.assertIn('url = "http://127.0.0.1:8766/mcp"', config_text)
         self.assertIn("# Custom Notes", agents_text)
         self.assertIn("Do not remove this section.", agents_text)
         self.assertIn("## sub_memory MCP", agents_text)
