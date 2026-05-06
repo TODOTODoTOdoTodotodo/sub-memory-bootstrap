@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from sub_memory.agent import SessionContext
+from sub_memory.session_context import SessionContext
 
 
 class SessionContextTests(unittest.TestCase):

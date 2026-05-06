@@ -7,10 +7,11 @@ import sys
 from time import perf_counter
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from sub_memory.config import Settings
 from sub_memory.metrics import MetricsLogger, count_chars, estimate_tokens_from_text
+from sub_memory.session_context import SessionContextRegistry
 from sub_memory.service import MemoryService
 
 
@@ -39,6 +40,11 @@ def build_mcp_server(
     host: str = "127.0.0.1",
     port: int = 8000,
 ) -> FastMCP:
+    session_contexts = SessionContextRegistry(
+        compact_after_turns=service.settings.compact_after_turns,
+        keep_recent_turns=service.settings.compact_keep_recent_turns,
+        summary_char_limit=service.settings.compact_summary_char_limit,
+    )
     server = FastMCP(
         "sub-memory",
         instructions=MCP_INSTRUCTIONS,
@@ -46,6 +52,25 @@ def build_mcp_server(
         host=host,
         port=port,
     )
+
+    def resolve_session_key(ctx: Context | None) -> str:
+        if ctx is None:
+            return "default"
+
+        try:
+            client_id = ctx.client_id
+        except Exception:
+            client_id = None
+        if client_id:
+            return f"client:{client_id}"
+
+        try:
+            return f"session:{id(ctx.session)}"
+        except Exception:
+            try:
+                return f"request:{ctx.request_id}"
+            except Exception:
+                return "default"
 
     @server.tool(
         name="recall_associated_memory",
@@ -55,10 +80,15 @@ def build_mcp_server(
         ),
         structured_output=True,
     )
-    def recall_associated_memory(query: str, depth: int = 2) -> dict[str, Any]:
+    def recall_associated_memory(
+        query: str,
+        depth: int = 2,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
         """Recall related memory nodes for a natural-language query."""
         started = perf_counter()
         result = service.recall_associated_memory(query=query, depth=depth)
+        result["session_context"] = session_contexts.get_snapshot(resolve_session_key(ctx))
         if metrics_logger is not None:
             memory_chars = sum(
                 len(memory.get("text", "")) for memory in result.get("memories", [])
@@ -73,6 +103,8 @@ def build_mcp_server(
                     "seed_distance": result.get("seed_distance"),
                     "node_count": len(result.get("node_ids", [])),
                     "memory_chars": memory_chars,
+                    "session_summary_chars": result["session_context"].get("summary_chars", 0),
+                    "session_recent_turn_count": result["session_context"].get("recent_turn_count", 0),
                     "estimated_memory_tokens": estimate_tokens_from_text(
                         "\n".join(
                             memory.get("text", "")
@@ -91,10 +123,19 @@ def build_mcp_server(
         ),
         structured_output=True,
     )
-    def store_memory(user_text: str, ai_response: str) -> dict[str, Any]:
+    def store_memory(
+        user_text: str,
+        ai_response: str,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
         """Persist a new memory node using the provided conversation turn."""
         started = perf_counter()
         result = service.store_memory(user_text=user_text, ai_response=ai_response)
+        result["session_context"] = session_contexts.append_turn(
+            resolve_session_key(ctx),
+            user_text,
+            ai_response,
+        )
         if metrics_logger is not None:
             metrics_logger.log_event(
                 "mcp_store",
@@ -104,6 +145,9 @@ def build_mcp_server(
                     "answer_chars": len(ai_response),
                     "stored_chars": len(user_text) + len(ai_response),
                     "node_id": result.get("node_id"),
+                    "session_summary_chars": result["session_context"].get("summary_chars", 0),
+                    "session_recent_turn_count": result["session_context"].get("recent_turn_count", 0),
+                    "session_compacted": result["session_context"].get("compacted", False),
                 },
             )
         return result
@@ -139,10 +183,12 @@ def build_mcp_server(
         ),
         structured_output=True,
     )
-    def get_memory_status() -> dict[str, Any]:
+    def get_memory_status(ctx: Context | None = None) -> dict[str, Any]:
         """Expose the current local memory store configuration and node count."""
         started = perf_counter()
         result = service.get_status()
+        result["active_session_contexts"] = session_contexts.active_session_count()
+        result["session_context"] = session_contexts.get_snapshot(resolve_session_key(ctx))
         if metrics_logger is not None:
             metrics_logger.log_event(
                 "mcp_status",
@@ -150,6 +196,7 @@ def build_mcp_server(
                     "duration_ms": round((perf_counter() - started) * 1000, 3),
                     "result_chars": count_chars(result),
                     "node_count": result.get("node_count", 0),
+                    "active_session_contexts": result.get("active_session_contexts", 0),
                 },
             )
         return result
