@@ -310,12 +310,17 @@ class MemoryStore:
                 and previous_node_id != node_id
                 and self._node_exists_locked(previous_node_id)
             ):
-                self._upsert_edge_locked(
-                    previous_node_id,
-                    node_id,
-                    create_weight=1.0,
-                    increment=0.0,
-                )
+                try:
+                    self._upsert_edge_locked(
+                        previous_node_id,
+                        node_id,
+                        create_weight=1.0,
+                        increment=0.0,
+                    )
+                except sqlite3.IntegrityError:
+                    # This object is responsible for surviving cross-process graph churn
+                    # where the previous node disappears after the existence check.
+                    self._graph.remove_nodes_from([previous_node_id])
             elif previous_node_id is not None and previous_node_id != node_id:
                 self._graph.remove_nodes_from([previous_node_id])
 

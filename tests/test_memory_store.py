@@ -134,6 +134,27 @@ class MemoryStoreTests(unittest.TestCase):
         self.assertEqual(self.store.count_nodes(), 1)
         self.assertEqual(self.store.count_edges(), 0)
 
+    def test_store_memory_ignores_foreign_key_race_while_linking_previous_node(self) -> None:
+        first = self.store.store_memory("alpha", "first")
+        self.assertEqual(self.store.count_nodes(), 1)
+
+        original = self.store._upsert_edge_locked
+
+        def raise_once(*args, **kwargs):
+            raise sqlite3.IntegrityError("FOREIGN KEY constraint failed")
+
+        self.store._upsert_edge_locked = raise_once  # type: ignore[method-assign]
+        try:
+            result = self.store.store_memory("beta", "second")
+        finally:
+            self.store._upsert_edge_locked = original  # type: ignore[method-assign]
+
+        self.assertEqual(result["status"], "stored")
+        self.assertEqual(self.store.count_nodes(), 2)
+        self.assertEqual(self.store.count_edges(), 0)
+        self.assertEqual(self.store._last_node_id, result["node_id"])
+        self.assertIsNone(self.store.get_edge_weight(first["node_id"], result["node_id"]))
+
     def test_graph_query_reloads_after_external_db_restore(self) -> None:
         with sqlite3.connect(self.settings.db_path) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
